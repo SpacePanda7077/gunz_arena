@@ -1,0 +1,15 @@
+export type backendPlayer = {
+    x: number;
+    y: number;
+    z: number;
+    aimAngle: number;
+    health: number;
+    currentInputIndex: number;
+    teamid: string;
+    animation: string;
+    flipped: boolean;
+    isMoving: boolean;
+    isSliding: boolean;
+    isShooting: boolean;
+};
+
