@@ -91,7 +91,12 @@ export class Character {
             } else if (this.physicsBody.isJumping) {
                 this.animation_controller.play("jump");
             } else {
-                this.animation_controller.play("run");
+                if (this.flipped === this.root.scaleX) {
+                    this.animation_controller.play("runForward");
+                } else {
+                    this.animation_controller.play("runBackward");
+                }
+
                 if (this.physicsBody.isShooting) {
                     this.animation_controller.playAdaptive("hand_shoot");
                 } else {
@@ -120,6 +125,10 @@ export class Character {
             aimPos.x,
             aimPos.y,
         );
+        if (!this.physicsBody.isShooting) {
+            this.hand.rotation = 0;
+            return;
+        }
         if (this.root.scaleX < 0) {
             this.hand.rotation = Math.PI - angle;
         } else {
@@ -159,7 +168,7 @@ export class Character {
     }
     flipCharacter(aimPos: { x: number; y: number }) {
         const position = this.physicsBody.hurtBox_rigidBody.translation();
-        if (this.physicsBody.isShooting || this.physicsBody.isSliding) {
+        if (this.physicsBody.isShooting) {
             if (aimPos.x < position.x) {
                 this.root.setScale(-1, 1);
             } else {

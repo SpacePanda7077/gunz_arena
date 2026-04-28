@@ -371,7 +371,7 @@ export class Bot {
     );
     const diff = AngleDifference(this.angle, angle);
     if (dist <= 300 && this.canSee && Math.abs(diff) < 0.15) {
-      const spread = 0.3;
+      const spread = 0.6;
       const variation = (Math.random() * 2 - 1) * spread;
       this.angle += variation;
       this.isShooting = true;

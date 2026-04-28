@@ -4,7 +4,7 @@ import {
     initialBodyPartPositions,
 } from "../character_Maker/bodyParts";
 import { IdleAnimation } from "./Animations/Idle";
-import { RunAnimation } from "./Animations/run";
+import { RunBackwardAnimation, RunForwardAnimation } from "./Animations/run";
 import { SlideAnimation } from "./Animations/slide";
 import { JumpForwardAnimation } from "./Animations/jumpForward";
 import { JumpBackwardAnimation } from "./Animations/jumpBackward";
@@ -18,7 +18,8 @@ export class AnimationController {
     allAnimations = [
         { idle: new IdleAnimation() },
         { hand_idle: new HandIdleAnimation() },
-        { run: new RunAnimation() },
+        { runForward: new RunForwardAnimation() },
+        { runBackward: new RunBackwardAnimation() },
         { hand_run: new HandRunAnimation() },
         { slide: new SlideAnimation() },
         { hand_slide: new HandSlideAnimation() },
