@@ -56,7 +56,7 @@ export class SlideAnimation {
 
         bodyParts.right_leg.x = PhaserMath.Linear(
             initialBodyPartPositions.right_leg.x,
-            3,
+            -3,
             this.progress,
         );
         bodyParts.left_leg.x = PhaserMath.Linear(
@@ -69,9 +69,24 @@ export class SlideAnimation {
             30,
             this.progress,
         );
+        bodyParts.right_leg.y = PhaserMath.Linear(
+            initialBodyPartPositions.left_leg.y,
+            34,
+            this.progress,
+        );
         bodyParts.left_leg.rotation = PhaserMath.Angle.RotateTo(
             bodyParts.left_leg.rotation,
             PhaserMath.DegToRad(-90),
+            this.progress,
+        );
+        bodyParts.right_leg.rotation = PhaserMath.Angle.RotateTo(
+            bodyParts.left_leg.rotation,
+            PhaserMath.DegToRad(-90),
+            this.progress,
+        );
+        bodyParts.main_body.rotation = PhaserMath.Angle.RotateTo(
+            bodyParts.main_body.angle,
+            PhaserMath.DegToRad(-30),
             this.progress,
         );
         bodyParts.root.bringToTop(bodyParts.right_leg);
@@ -79,6 +94,7 @@ export class SlideAnimation {
     end(bodyParts: BodyPart) {
         this.progress = 0;
         bodyParts.root.sendToBack(bodyParts.right_leg);
+        bodyParts.main_body.rotation = 0;
     }
 }
 

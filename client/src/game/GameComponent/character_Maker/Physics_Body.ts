@@ -48,7 +48,7 @@ export class Physics_Body {
         this.isSliding = false;
         this.isJumping = false;
         this.isMoving = false;
-        this.speed = 200;
+        this.speed = 300;
         this.MaxSpeed = this.speed;
         this.world = world;
         this.create_body(position);

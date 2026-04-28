@@ -17,7 +17,7 @@ export class Character {
     hand: Phaser.GameObjects.Container;
     animation_controller: AnimationController;
     shadow: Phaser.GameObjects.Ellipse;
-
+    flipped = 1;
     constructor(
         scene: Phaser.Scene,
         world: World,
@@ -159,10 +159,16 @@ export class Character {
     }
     flipCharacter(aimPos: { x: number; y: number }) {
         const position = this.physicsBody.hurtBox_rigidBody.translation();
-        if (aimPos.x < position.x) {
-            this.root.setScale(-1, 1);
+        if (this.physicsBody.isShooting || this.physicsBody.isSliding) {
+            if (aimPos.x < position.x) {
+                this.root.setScale(-1, 1);
+            } else {
+                this.root.setScale(1, 1);
+            }
         } else {
-            this.root.setScale(1, 1);
+            if (this.physicsBody.direction.x !== 0) {
+                this.root.setScale(this.flipped, 1);
+            }
         }
     }
 

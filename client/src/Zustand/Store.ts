@@ -1,7 +1,7 @@
 import { Client, Room, SeatReservation } from "@colyseus/sdk";
 import { create } from "zustand";
 
-export const client = new Client("ws://localhost:2567");
+export const client = new Client("https://gunzarena-production.up.railway.app");
 
 type RoomType = {
     room: Room | null;

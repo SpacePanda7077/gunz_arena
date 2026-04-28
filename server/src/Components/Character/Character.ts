@@ -66,7 +66,7 @@ export class Character {
     this.isJumping = false;
     this.isMoving = false;
     this.flipped = false;
-    this.speed = 200;
+    this.speed = 300;
     this.MaxSpeed = this.speed;
     this.world = world;
     this.animation = "idle";

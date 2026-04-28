@@ -63,6 +63,9 @@ export class Input_Handler {
         } else {
             player.physicsBody.isMoving = false;
         }
+        if (input.x !== 0) {
+            player.flipped = input.x;
+        }
 
         // Normalize (important for diagonals)
         const length = Math.sqrt(input.x * input.x + input.y * input.y);

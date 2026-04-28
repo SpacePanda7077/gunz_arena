@@ -46,21 +46,26 @@ export class RunAnimation {
         bodyParts.main_body.y =
             initialBodyPartPositions.main_body.y + ((-1 + bodySway) / 2) * 4;
         bodyParts.left_leg.x =
-            initialBodyPartPositions.left_leg.x + ((-1 + sway1) / 2) * 20;
+            initialBodyPartPositions.left_leg.x + ((-0.8 + sway1) / 2) * 20;
         bodyParts.left_leg.y =
             initialBodyPartPositions.left_leg.y + -1 * ((1 + sway2) / 2) * 5;
         bodyParts.left_leg.rotation = PhaserMath.DegToRad(
             ((-sway1 + 1) / 2) * 100 - 20,
         );
+        bodyParts.head.rotation = PhaserMath.DegToRad(-10);
 
         bodyParts.right_leg.x =
-            initialBodyPartPositions.right_leg.x + ((1 + -sway1) / 2) * 20;
+            initialBodyPartPositions.right_leg.x + ((0.2 + -sway1) / 2) * 20;
         bodyParts.right_leg.y =
             initialBodyPartPositions.right_leg.y + -1 * ((1 - sway2) / 2) * 5;
         bodyParts.right_leg.rotation = PhaserMath.DegToRad(
             ((sway1 + 1) / 2) * 100 - 20,
         );
+        bodyParts.main_body.rotation = PhaserMath.DegToRad(10);
     }
-    end(bodyParts: BodyPart) {}
+    end(bodyParts: BodyPart) {
+        bodyParts.main_body.rotation = 0;
+        bodyParts.head.rotation = 0;
+    }
 }
 
