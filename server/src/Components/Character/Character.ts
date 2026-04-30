@@ -86,7 +86,7 @@ export class Character {
       hurtBox_rigid_body_desc,
     );
     this.rigidBody = this.world.createRigidBody(rigid_body_desc);
-    const hurtBox_collider_desc = ColliderDesc.ball(20)
+    const hurtBox_collider_desc = ColliderDesc.ball(30)
       .setActiveCollisionTypes(ActiveCollisionTypes.ALL)
       .setActiveEvents(ActiveEvents.COLLISION_EVENTS);
     const collider_desc = ColliderDesc.cuboid(32, 8).setTranslation(0, 32);

@@ -59,7 +59,7 @@ const server = defineServer({
      */
     if (process.env.NODE_ENV !== "production") {
       app.use("/", playground());
-      server.simulateLatency(80);
+      server.simulateLatency(230);
     }
   },
 });

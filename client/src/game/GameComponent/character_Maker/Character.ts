@@ -18,6 +18,7 @@ export class Character {
     animation_controller: AnimationController;
     shadow: Phaser.GameObjects.Ellipse;
     flipped = 1;
+    health: Phaser.GameObjects.Text;
     constructor(
         scene: Phaser.Scene,
         world: World,
@@ -29,6 +30,7 @@ export class Character {
     }
     create_body(position: { x: number; y: number }) {
         this.shadow = this.scene.add.ellipse(0, 0, 60, 20, 0x000000, 0.3);
+        this.health = this.scene.add.text(position.x, position.y - 100, "300");
         const right_leg = this.scene.add.sprite(-8, 23, "right_leg");
         const left_leg = this.scene.add.sprite(8, 23, "left_leg");
         const body = this.scene.add.sprite(0, 0, "body");
@@ -82,6 +84,7 @@ export class Character {
         this.body.setPosition(interpolatedPos.x, interpolatedPos.y);
         this.camTarget.setPosition(shadowposition.x, shadowposition.y);
         this.shadow.setPosition(shadowposition.x, shadowposition.y + 32);
+        this.health.setPosition(interpolatedPos.x, interpolatedPos.y - 100);
     }
     handleAnimations() {
         if (this.physicsBody.isMoving) {
@@ -140,31 +143,23 @@ export class Character {
         bulletGenerator: BulletGenerator,
         aimPos: { x: number; y: number },
     ) {
-        if (time > this.lastShootTime + 200) {
-            const position = this.physicsBody.rigidBody.translation();
-            const angle = PhaserMath.Angle.Between(
-                position.x,
-                position.y,
-                aimPos.x,
-                aimPos.y,
-            );
-            const pos = {
-                x: position.x + Math.cos(angle) * 50,
-                y: position.y + Math.sin(angle) * 50,
-            };
-            bulletGenerator.createBullet(
-                pos,
-                this.physicsBody.bulletRay,
-                angle,
-            );
-            this.lastShootTime = time;
-            this.hand.x =
-                this.hand.x +
-                Math.cos(this.hand.rotation) * this.root.scaleX * -10;
-            this.hand.y =
-                this.hand.y +
-                Math.sin(this.hand.rotation) * this.root.scaleX * -10;
-        }
+        const position = this.physicsBody.rigidBody.translation();
+        const angle = PhaserMath.Angle.Between(
+            position.x,
+            position.y,
+            aimPos.x,
+            aimPos.y,
+        );
+        const pos = {
+            x: position.x + Math.cos(angle) * 50,
+            y: position.y + Math.sin(angle) * 50,
+        };
+        bulletGenerator.createBullet(pos, this.physicsBody.bulletRay, angle);
+        this.lastShootTime = time;
+        this.hand.x =
+            this.hand.x + Math.cos(this.hand.rotation) * this.root.scaleX * -10;
+        this.hand.y =
+            this.hand.y + Math.sin(this.hand.rotation) * this.root.scaleX * -10;
     }
     flipCharacter(aimPos: { x: number; y: number }) {
         const position = this.physicsBody.hurtBox_rigidBody.translation();

@@ -68,7 +68,7 @@ export class Physics_Body {
         );
         this.rigidBody = this.world.createRigidBody(rigid_body_desc);
 
-        const hurtBox_collider_desc = ColliderDesc.ball(20);
+        const hurtBox_collider_desc = ColliderDesc.ball(30);
         const collider_desc = ColliderDesc.cuboid(32, 8).setTranslation(0, 32);
         this.world.createCollider(
             hurtBox_collider_desc,

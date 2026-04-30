@@ -16,7 +16,7 @@ export class Input_Handler {
         aimPos: { x: number; y: number };
         computedMovement: { x: number; y: number };
         slide: boolean;
-        shoot: boolean;
+        shoot: { shoot: boolean; timestamp: number };
         speed: number;
         inputIndex: number;
     }[];
@@ -85,7 +85,10 @@ export class Input_Handler {
                 player.physicsBody.isMoving &&
                 Input.Keyboard.JustDown(this.slide),
 
-            shoot: this.scene.input.activePointer.leftButtonDown(),
+            shoot: {
+                shoot: this.scene.input.activePointer.leftButtonDown(),
+                timestamp: Date.now(),
+            },
 
             speed: player.physicsBody.speed,
             inputIndex: this.inputIndex,
@@ -103,7 +106,7 @@ export class Input_Handler {
         if (entry.slide && player.physicsBody.isMoving) {
             player.physicsBody.slide();
         }
-        if (entry.shoot) {
+        if (entry.shoot.shoot) {
             player.physicsBody.isShooting = true;
             this.Shoot(player, time, bulletGenerator, aimPos);
         } else {
@@ -117,7 +120,7 @@ export class Input_Handler {
         aimTarget: { x: number; y: number },
     ) {
         if (player.physicsBody.isShooting) {
-            if (time > player.lastShootTime + 200) {
+            if (time > player.lastShootTime + 50) {
                 player.shoot(time, bulletGenerator, aimTarget);
             }
         }

@@ -34,7 +34,7 @@ export class TeamDeathMatchRoom extends Room {
         input: { x: number; y: number };
         aimPos: { x: number; y: number };
         slide: boolean;
-        shoot: boolean;
+        shoot: { shoot: boolean; timestamp: number };
         speed: number;
         inputIndex: number;
       },
@@ -80,6 +80,7 @@ export class TeamDeathMatchRoom extends Room {
 
   fixedUpdate() {
     this.pastTime += this.fixedTick;
+    const currentSnapshot: Map<string, { x: number; y: number }> = new Map();
 
     for (const id in this.players) {
       const player = this.players[id];
@@ -104,7 +105,10 @@ export class TeamDeathMatchRoom extends Room {
         if (input.slide) {
           player.slide();
         }
-        player.isShooting = input.shoot;
+        player.isShooting = input.shoot.shoot;
+        if (player.isShooting) {
+          this.shoot(id, player.isShooting, input.shoot.timestamp);
+        }
 
         player.flipCharacter(input.aimPos);
       }
@@ -118,6 +122,9 @@ export class TeamDeathMatchRoom extends Room {
       }
       if (player instanceof Bot) {
         playerState.aimAngle = player.angle;
+        if (player.isShooting) {
+          this.shoot(id, player.isShooting, Date.now());
+        }
         player.checkdistance(this.state, this.pastTime);
         const canSee = player.checkIfCanSee(this.players, this.fixedTick);
         player.canSee = canSee;
@@ -125,9 +132,7 @@ export class TeamDeathMatchRoom extends Room {
       player.isMoving = player.direction.x !== 0 || player.direction.y !== 0;
 
       player.update_body(this.fixedTick, this.pastTime);
-      if (player.isShooting) {
-        this.shoot(id, player.isShooting);
-      }
+
       player.handleAnimations();
       if (player.health <= 0) {
         player.die(this.pastTime, this);
@@ -143,6 +148,14 @@ export class TeamDeathMatchRoom extends Room {
       playerState.isSliding = player.isSliding;
       playerState.isShooting = player.isShooting;
       playerState.flipped = player.flipped;
+      currentSnapshot.set(id, position);
+    }
+    this.state.snapshots.push({
+      timestamp: Date.now(),
+      positions: currentSnapshot,
+    });
+    if (this.state.snapshots.length > 60) {
+      this.state.snapshots.shift();
     }
     this.world.step(this.eventQueue);
     this.bulletGenerator.simulateBullets();
@@ -169,14 +182,16 @@ export class TeamDeathMatchRoom extends Room {
     this.thingsToDestroy.length = 0;
   }
 
-  shoot(id: string, shoot: boolean) {
+  shoot(id: string, shoot: boolean, clientTimestamp: number) {
     const player = this.players[id];
     if (!shoot) return;
-    if (this.pastTime > player.lastShootTime + 200) {
+    if (this.pastTime > player.lastShootTime + 50) {
       const playerState = this.state.players.get(id);
       this.bulletGenerator.createBullet(
         player,
         this.players,
+        this.state,
+        clientTimestamp,
         playerState.aimAngle,
         id,
         this,

@@ -11,7 +11,7 @@ export class Player extends Schema {
     input: { x: number; y: number };
     aimPos: { x: number; y: number };
     slide: boolean;
-    shoot: boolean;
+    shoot: { shoot: boolean; timestamp: number };
     speed: number;
     inputIndex: number;
   }[] = [];
@@ -30,5 +30,9 @@ export class Player extends Schema {
 }
 
 export class GameState extends Schema {
+  snapshots: {
+    timestamp: number;
+    positions: Map<string, { x: number; y: number }>;
+  }[] = [];
   @type({ map: Player }) players = new MapSchema<Player>();
 }

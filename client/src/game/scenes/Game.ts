@@ -163,11 +163,16 @@ export class Game extends Scene {
                     const f_player = this.frontendPlayers[id];
                     const position =
                         f_player.physicsBody.rigidBody.translation();
+                    f_player.health.text = backendPlayer.health.toString();
 
                     const interpolatedPos = {
                         x: PhaserMath.Linear(position.x, backendPlayer.x, 0.6),
                         y: PhaserMath.Linear(position.y, backendPlayer.y, 0.6),
                     };
+                    f_player.health.setPosition(
+                        interpolatedPos.x,
+                        interpolatedPos.y - 100,
+                    );
                     f_player.physicsBody.rigidBody.setTranslation(
                         interpolatedPos,
                         true,
@@ -201,21 +206,16 @@ export class Game extends Scene {
         });
 
         this.room.onMessage(
-            "bulletShot",
+            "bullet_shot",
             (data: {
                 shooterId: string;
                 pos: { x: number; y: number };
                 angle: number;
                 toi: number;
             }) => {
-                if (this.room.sessionId !== data.shooterId) {
-                    console.log("shooting");
-                    this.bulletGenerator.drawBullet(
-                        data.pos,
-                        data.angle,
-                        data.toi,
-                    );
-                }
+                console.log("shooting");
+                if (data.shooterId === this.room.sessionId) return;
+                this.bulletGenerator.drawBullet(data.pos, data.angle, data.toi);
             },
         );
         this.room.onMessage("deleteBullet", (id: string) => {
