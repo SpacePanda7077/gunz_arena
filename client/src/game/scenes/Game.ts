@@ -186,18 +186,23 @@ export class Game extends Scene {
                         hurtBoxPosition,
                         true,
                     );
+                    f_player.physicsBody.direction.x = backendPlayer.flipped;
+                    f_player.flipped = backendPlayer.flipped;
 
-                    if (f_player.root.scaleX < 0) {
-                        f_player.hand.rotation =
-                            Math.PI - backendPlayer.aimAngle;
-                    } else {
-                        f_player.hand.rotation = backendPlayer.aimAngle;
-                    }
                     f_player.physicsBody.isMoving = backendPlayer.isMoving;
                     f_player.physicsBody.isSliding = backendPlayer.isSliding;
                     f_player.physicsBody.isShooting = backendPlayer.isShooting;
                     f_player.handleAnimations();
-                    f_player.root.setScale(backendPlayer.flipped ? -1 : 1, 1);
+                    const aimPos = {
+                        x:
+                            backendPlayer.x +
+                            Math.cos(backendPlayer.aimAngle) * 100,
+                        y:
+                            backendPlayer.y +
+                            Math.sin(backendPlayer.aimAngle) * 100,
+                    };
+                    f_player.flipCharacter(aimPos);
+                    f_player.updateWeaponRotation(aimPos);
                 }
             });
         });

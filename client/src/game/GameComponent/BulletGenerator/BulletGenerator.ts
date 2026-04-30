@@ -1,5 +1,5 @@
-import { Ray, RigidBody, World } from "@dimforge/rapier2d-compat";
-import { Math as PhaserMath, Tweens } from "phaser";
+import { QueryFilterFlags, Ray, World } from "@dimforge/rapier2d-compat";
+import { Math as PhaserMath } from "phaser";
 
 export class BulletGenerator {
     world: World;
@@ -47,7 +47,7 @@ export class BulletGenerator {
             ray,
             toi,
             true,
-            undefined,
+            QueryFilterFlags.EXCLUDE_SENSORS,
             undefined,
             undefined,
             undefined,
@@ -97,7 +97,11 @@ export class BulletGenerator {
         });
     }
 
-    drawBullet(pos: { x: number; y: number }, angle: number, toi: number) {
+    drawBullet(position: { x: number; y: number }, angle: number, toi: number) {
+        const pos = {
+            x: position.x + Math.cos(angle) * 64,
+            y: position.y + Math.sin(angle) * 64,
+        };
         const bulletBody = this.scene.add.rectangle(
             pos.x,
             pos.y,

@@ -38,7 +38,7 @@ export class Character {
   isMoving: boolean;
   isDead: boolean = false;
   animation: string;
-  flipped: boolean;
+  flipped: number;
   teamid: string;
   bulletRay: Ray;
   health: number;
@@ -65,7 +65,7 @@ export class Character {
     this.isShooting = false;
     this.isJumping = false;
     this.isMoving = false;
-    this.flipped = false;
+    this.flipped = 1;
     this.speed = 300;
     this.MaxSpeed = this.speed;
     this.world = world;
@@ -90,8 +90,11 @@ export class Character {
       .setActiveCollisionTypes(ActiveCollisionTypes.ALL)
       .setActiveEvents(ActiveEvents.COLLISION_EVENTS);
     const collider_desc = ColliderDesc.cuboid(32, 8).setTranslation(0, 32);
-    this.world.createCollider(hurtBox_collider_desc, this.hurtBox_rigidBody);
-    this.collider = this.world.createCollider(collider_desc, this.rigidBody);
+    this.collider = this.world.createCollider(
+      hurtBox_collider_desc,
+      this.hurtBox_rigidBody,
+    );
+    this.world.createCollider(collider_desc, this.rigidBody);
     this.character_controller = this.world.createCharacterController(0.02);
     this.bulletRay = new Ray({ x: position.x, y: position.y }, { x: 0, y: 0 });
   }
@@ -175,19 +178,12 @@ export class Character {
       }
     }
   }
-  flipCharacter(aimPos: { x: number; y: number }) {
-    const position = this.hurtBox_rigidBody.translation();
-    if (aimPos.x < position.x) {
-      this.flipped = true;
-    } else {
-      this.flipped = false;
-    }
-  }
 
   die(time: number, room: Room) {
     if (this.isDead) return;
     this.lastDeathTime = time;
     this.isDead = true;
+    this.collider.setSensor(true);
     room.broadcast("player_died", { id: this.sessionId });
   }
   respawn(
@@ -204,6 +200,7 @@ export class Character {
         this.rigidBody.setTranslation(pos, true);
         this.health = this.maxHealth;
         this.isDead = false;
+        this.collider.setSensor(false);
         room.broadcast("respawn", { id: this.sessionId });
       }
     }

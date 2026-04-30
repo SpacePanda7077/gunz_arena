@@ -7,7 +7,7 @@ export type backendPlayer = {
     currentInputIndex: number;
     teamid: string;
     animation: string;
-    flipped: boolean;
+    flipped: number;
     isMoving: boolean;
     isSliding: boolean;
     isShooting: boolean;

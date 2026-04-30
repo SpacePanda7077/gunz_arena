@@ -98,12 +98,10 @@ export class ChasingState {
 
     this.bot.handleInput(dir);
 
-    this.bot.handleAnimations();
-    if (Math.sign(this.bot.velocity.x) === -1) {
-      this.bot.flipped = true;
-    } else {
-      this.bot.flipped = false;
+    if (this.bot.velocity.x !== 0) {
+      this.bot.flipped = Math.sign(this.bot.velocity.x);
     }
+
     //this.bot.angle = angleToTarget;
   }
   finish() {

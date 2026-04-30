@@ -53,7 +53,7 @@ export class Bot {
   isAttacking: boolean;
   isDead: boolean = false;
   animation: string;
-  flipped: boolean;
+  flipped: number;
   stateManager: StateManager;
   angle = 0;
   teamid: string;
@@ -97,7 +97,7 @@ export class Bot {
     this.isShooting = false;
     this.isJumping = false;
     this.isMoving = false;
-    this.flipped = false;
+    this.flipped = 1;
     this.canAttack = false;
     this.canSee = false;
     this.isChasing = false;
@@ -224,14 +224,7 @@ export class Bot {
       }
     }
   }
-  flipCharacter(aimPos: { x: number; y: number }) {
-    const position = this.hurtBox_rigidBody.translation();
-    if (aimPos.x < position.x) {
-      this.flipped = true;
-    } else {
-      this.flipped = false;
-    }
-  }
+
   setInterest(targetDir: { x: number; y: number }) {
     for (let i = 0; i < this.sensors.length; i++) {
       const dir = this.sensors[i].dir;
@@ -412,6 +405,7 @@ export class Bot {
         this.rigidBody.setTranslation(pos, true);
         this.health = this.maxHealth;
         this.isDead = false;
+        this.stateManager.setState("wandering");
         room.broadcast("respawn", { id: this.sessionId });
       }
     }

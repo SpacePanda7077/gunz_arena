@@ -21,9 +21,9 @@ export class Player extends Schema {
   @type("number") health: number = 300;
   @type("number") aimAngle: number = 0;
   @type("number") currentInputIndex: number = 0;
+  @type("number") flipped: number = 1;
   @type("string") teamid: string = "";
   @type("string") sessionId: string = "";
-  @type("boolean") flipped: boolean = false;
   @type("boolean") isMoving: boolean = false;
   @type("boolean") isSliding: boolean = false;
   @type("boolean") isShooting: boolean = false;

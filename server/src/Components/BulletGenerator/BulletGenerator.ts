@@ -1,4 +1,10 @@
-import { Collider, Ray, RigidBody, World } from "@dimforge/rapier2d-compat";
+import {
+  Collider,
+  QueryFilterFlags,
+  Ray,
+  RigidBody,
+  World,
+} from "@dimforge/rapier2d-compat";
 
 import { Character } from "../Character/Character";
 import { Bot } from "../Bots/Bots";
@@ -175,7 +181,7 @@ export class BulletGenerator {
       wallRay,
       RAY_MAX_DIST,
       true, // solid: stop if ray starts inside a shape
-      undefined, // filterFlags
+      QueryFilterFlags.EXCLUDE_SENSORS, // filterFlags
       undefined, // filterGroups
       undefined, // filterExcludeCollider
       undefined, // filterExcludeRigidBody
@@ -195,7 +201,6 @@ export class BulletGenerator {
       // Player is closer than the first wall → confirmed hit
       const hitPlayer = players[closestHit.id];
       if (!hitPlayer) return;
-
       hitPlayer.health -= BULLET_DAMAGE;
 
       // Broadcast to room — add your own event name / payload shape
@@ -203,7 +208,7 @@ export class BulletGenerator {
         shooterId,
         pos: player.rigidBody.translation(),
         angle,
-        toi: closestHit.toi,
+        toi: hitPlayer.isDead ? wallDist : closestHit.toi,
       });
     } else if (wallHit) {
       const hitPoint = {

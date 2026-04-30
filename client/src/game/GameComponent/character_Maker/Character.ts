@@ -132,6 +132,7 @@ export class Character {
             this.hand.rotation = 0;
             return;
         }
+
         if (this.root.scaleX < 0) {
             this.hand.rotation = Math.PI - angle;
         } else {
@@ -160,6 +161,11 @@ export class Character {
             this.hand.x + Math.cos(this.hand.rotation) * this.root.scaleX * -10;
         this.hand.y =
             this.hand.y + Math.sin(this.hand.rotation) * this.root.scaleX * -10;
+        const vector = new PhaserMath.Vector2(
+            Math.cos(this.hand.rotation) * 0.005,
+            Math.sin(this.hand.rotation) * 0.005,
+        );
+        this.scene.cameras.main.shake(50, vector);
     }
     flipCharacter(aimPos: { x: number; y: number }) {
         const position = this.physicsBody.hurtBox_rigidBody.translation();
@@ -199,11 +205,21 @@ export class Character {
             repeat: 0,
         });
         blood_splat.play("splash");
+        this.physicsBody.collider.setSensor(true);
     }
     respawn() {
-        this.physicsBody.isDead = false;
-        this.body.setVisible(true);
-        this.shadow.setVisible(true);
+        const time = this.scene.time.addEvent({
+            delay: 1000,
+            callback: () => {
+                this.physicsBody.isDead = false;
+                this.body.setVisible(true);
+                this.shadow.setVisible(true);
+                this.physicsBody.collider.setSensor(false);
+                time.destroy();
+            },
+            callbackScope: this.scene,
+            loop: false,
+        });
     }
 }
 

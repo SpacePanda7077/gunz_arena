@@ -1,4 +1,5 @@
 import {
+    Collider,
     ColliderDesc,
     KinematicCharacterController,
     QueryFilterFlags,
@@ -12,7 +13,7 @@ import { Normalize } from "../../Helper/Maths/Maths";
 export class Physics_Body {
     world: World;
     rigidBody: RigidBody;
-    collider: any;
+    collider: Collider;
     velocity: { x: number; y: number };
     direction: { x: number; y: number };
     character_controller: KinematicCharacterController;
@@ -70,14 +71,11 @@ export class Physics_Body {
 
         const hurtBox_collider_desc = ColliderDesc.ball(30);
         const collider_desc = ColliderDesc.cuboid(32, 8).setTranslation(0, 32);
-        this.world.createCollider(
+        this.collider = this.world.createCollider(
             hurtBox_collider_desc,
             this.hurtBox_rigidBody,
         );
-        this.collider = this.world.createCollider(
-            collider_desc,
-            this.rigidBody,
-        );
+        this.world.createCollider(collider_desc, this.rigidBody);
 
         this.character_controller = this.world.createCharacterController(0.02);
         this.bulletRay = new Ray(

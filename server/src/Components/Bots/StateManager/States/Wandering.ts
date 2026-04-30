@@ -30,14 +30,8 @@ export class WanderingState {
     this.easystar.enableDiagonals();
     this.easystar.setAcceptableTiles([0]);
     this.lastWanderTime = 0;
-    console.log(
-      "all posible position in wandering state: ",
-      this.allPossiblePosition,
-    );
   }
-  start() {
-    console.log("Path found:", this.path);
-  }
+  start() {}
 
   update(currentTarget: Character | Bot, time: number) {
     if (this.bot.canSee) {
@@ -85,12 +79,10 @@ export class WanderingState {
     if (dist < 64) {
       this.path.splice(0, 1);
     }
-    this.bot.handleAnimations();
-    if (Math.sign(this.bot.velocity.x) === -1) {
-      this.bot.flipped = true;
-    } else {
-      this.bot.flipped = false;
+    if (this.bot.velocity.x !== 0) {
+      this.bot.flipped = Math.sign(this.bot.velocity.x);
     }
+
     //this.bot.angle = angleToTarget;
   }
 
@@ -105,7 +97,7 @@ export class WanderingState {
       this.allPossiblePosition[
         Math.floor(Math.random() * this.allPossiblePosition.length)
       ];
-    console.log("path to : ", random_tile_position);
+
     const position_to_tile = {
       x: Math.floor(this.bot.rigidBody.translation().x / 64),
       y: Math.floor(this.bot.rigidBody.translation().y / 64),

@@ -91,6 +91,9 @@ export class TeamDeathMatchRoom extends Room {
         if (!player.isSliding) {
           player.handleInput(input.input);
         }
+        if (input.input.x !== 0) {
+          player.flipped = Math.sign(input.input.x);
+        }
 
         playerState.currentInputIndex = input.inputIndex;
         const position = player.rigidBody.translation();
@@ -109,8 +112,6 @@ export class TeamDeathMatchRoom extends Room {
         if (player.isShooting) {
           this.shoot(id, player.isShooting, input.shoot.timestamp);
         }
-
-        player.flipCharacter(input.aimPos);
       }
       if (player.isDead) {
         player.respawn(
