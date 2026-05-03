@@ -119,8 +119,9 @@ export class Input_Handler {
         bulletGenerator: BulletGenerator,
         aimTarget: { x: number; y: number },
     ) {
+        const delay = (60 / player.weaponInfo.rpm) * 1000;
         if (player.physicsBody.isShooting) {
-            if (time > player.lastShootTime + 50) {
+            if (time > player.lastShootTime + delay) {
                 player.shoot(time, bulletGenerator, aimTarget);
             }
         }

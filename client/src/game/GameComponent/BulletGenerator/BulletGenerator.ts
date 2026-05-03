@@ -1,5 +1,6 @@
 import { QueryFilterFlags, Ray, World } from "@dimforge/rapier2d-compat";
 import { Math as PhaserMath } from "phaser";
+import { Character } from "../character_Maker/Character";
 
 export class BulletGenerator {
     world: World;
@@ -18,7 +19,12 @@ export class BulletGenerator {
         this.scene = scene;
         this.world = world;
     }
-    createBullet(pos: { x: number; y: number }, ray: Ray, angle: number) {
+    createBullet(
+        player: Character,
+        pos: { x: number; y: number },
+        ray: Ray,
+        angle: number,
+    ) {
         const bulletBody = this.scene.add.rectangle(
             pos.x,
             pos.y,
@@ -42,7 +48,7 @@ export class BulletGenerator {
             x: Math.cos(angle),
             y: Math.sin(angle),
         };
-        const toi = 500;
+        const toi = player.weaponInfo.range;
         const hit = this.world.castRay(
             ray,
             toi,
@@ -97,11 +103,7 @@ export class BulletGenerator {
         });
     }
 
-    drawBullet(position: { x: number; y: number }, angle: number, toi: number) {
-        const pos = {
-            x: position.x + Math.cos(angle) * 64,
-            y: position.y + Math.sin(angle) * 64,
-        };
+    drawBullet(pos: { x: number; y: number }, angle: number, toi: number) {
         const bulletBody = this.scene.add.rectangle(
             pos.x,
             pos.y,

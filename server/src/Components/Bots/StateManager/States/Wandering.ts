@@ -100,7 +100,7 @@ export class WanderingState {
 
     const position_to_tile = {
       x: Math.floor(this.bot.rigidBody.translation().x / 64),
-      y: Math.floor(this.bot.rigidBody.translation().y / 64),
+      y: Math.floor((this.bot.rigidBody.translation().y + 32) / 64),
     };
     const random_tile_position_to_tile = {
       x: Math.floor(random_tile_position.x / 64),

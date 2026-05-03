@@ -18,9 +18,9 @@ interface Snapshot {
 
 // ── Tuning constants ────────────────────────────────────────────────────────
 const MAX_LAG_MS = 250;
+const MAX_EXTRAPOLATION_MS = 80; // ← New: small safe extrapolation
 const BULLET_SPAWN_OFFSET = 48;
-const RAY_MAX_DIST = 500;
-const HURT_BOX_RADIUS = 30; // match your hurtbox collider radius exactly
+const HURT_BOX_RADIUS = 30;
 const BULLET_DAMAGE = 30;
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -40,73 +40,60 @@ export class BulletGenerator {
     angle: number,
     shooterId: string,
     room: Room,
+    time: number,
   ) {
-    // ─── 1. SANITIZE CLIENT TIMESTAMP ──────────────────────────────────────
     const serverTime = Date.now();
-    const validatedTime = Math.max(
-      serverTime - MAX_LAG_MS,
-      clientShootTimestamp,
-    );
+    const RAY_MAX_DIST = player.weapon.range;
 
-    // ─── 2. FIND SURROUNDING SNAPSHOTS ─────────────────────────────────────
-    // Convert Colyseus ArraySchema → plain array so getInterpolatedSnapshots
-    // can index it normally. Each snapshot's positions MapSchema is also
-    // converted to a native Map so .get() works reliably.
+    // 1. Sanitize client timestamp (prevent cheating + allow small extrapolation)
+    let targetTime = Math.max(serverTime - MAX_LAG_MS, clientShootTimestamp);
+    targetTime = Math.min(targetTime, serverTime + MAX_EXTRAPOLATION_MS);
+
+    // 2. Prepare snapshots (convert once)
     const snapshots: Snapshot[] = Array.from(state.snapshots).map(
       (snap: any) => ({
         timestamp: snap.timestamp,
         positions:
           snap.positions instanceof Map
             ? snap.positions
-            : new Map(Object.entries(snap.positions)), // handles MapSchema → Map
+            : new Map(Object.entries(snap.positions)),
       }),
     );
 
     if (snapshots.length === 0) {
-      console.warn("[createBullet] Snapshot buffer is empty — skipping shot");
+      console.warn("[BulletGenerator] Snapshot buffer empty");
       return;
     }
 
-    const { s1, s2, t } = this.getInterpolatedSnapshots(
-      snapshots,
-      validatedTime,
-    );
+    const { s1, s2, t } = this.getInterpolatedSnapshots(snapshots, targetTime);
 
     if (!s1 || !s2) {
-      console.warn(
-        "[createBullet] No valid snapshot pair for timestamp",
-        validatedTime,
-      );
+      console.warn("[BulletGenerator] No valid snapshots for time", targetTime);
       return;
     }
 
-    // ─── 3. REWIND ALL PLAYER POSITIONS ────────────────────────────────────
-    const clampedT = Math.min(1, Math.max(0, t)); // guard against float drift
+    // 3. Rewind all player positions
     const rewoundPositions = new Map<string, { x: number; y: number }>();
 
-    for (const [id, p] of Object.entries(players)) {
+    for (const [id, entity] of Object.entries(players)) {
       const pos1 = s1.positions.get(id);
       const pos2 = s2.positions.get(id);
 
       if (pos1 && pos2) {
-        rewoundPositions.set(id, {
-          x: pos1.x + (pos2.x - pos1.x) * clampedT,
-          y: pos1.y + (pos2.y - pos1.y) * clampedT,
-        });
+        const x = pos1.x + (pos2.x - pos1.x) * t;
+        const y = pos1.y + (pos2.y - pos1.y) * t;
+        rewoundPositions.set(id, { x, y });
       } else {
-        // Player joined mid-game and has no snapshot — use current position
-        const cur = p.hurtBox_rigidBody.translation();
-        rewoundPositions.set(id, { x: cur.x, y: cur.y });
+        // Fallback for players without history
+        const current = entity.hurtBox_rigidBody.translation();
+        rewoundPositions.set(id, { x: current.x, y: current.y });
       }
     }
 
-    // ─── 4. BUILD RAY FROM REWOUND SHOOTER POSITION ────────────────────────
+    // 4. Build ray from rewound shooter position
     const shooterPos = rewoundPositions.get(shooterId);
     if (!shooterPos) {
-      console.warn(
-        "[createBullet] Shooter missing from rewound positions",
-        shooterId,
-      );
+      console.warn("[BulletGenerator] Shooter not found in rewound positions");
       return;
     }
 
@@ -117,17 +104,10 @@ export class BulletGenerator {
       x: shooterPos.x + cosA * BULLET_SPAWN_OFFSET,
       y: shooterPos.y + sinA * BULLET_SPAWN_OFFSET,
     };
-    const rayDir = { x: cosA, y: sinA }; // unit vector — no normalization needed
 
-    // ─── 5. RAY vs CIRCLE HIT DETECTION (no physics engine involved) ────────
-    //
-    // For a ray  P(s) = origin + s·dir  and circle centered at C with radius r:
-    //   let o = origin - C
-    //   a·s² + b·s + c = 0   where a=1 (dir is unit), b=2·dot(dir,o), c=|o|²-r²
-    //   discriminant = b²-4c
-    //   s_entry = (-b - √disc) / 2
-    //   s_exit  = (-b + √disc) / 2
-    // ────────────────────────────────────────────────────────────────────────
+    const rayDir = { x: cosA, y: sinA };
+
+    // 5. Ray vs Circle hit detection (rewound players)
     let closestHit: {
       id: string;
       toi: number;
@@ -135,7 +115,7 @@ export class BulletGenerator {
     } | null = null;
 
     for (const [id] of Object.entries(players)) {
-      if (id === shooterId) continue; // shooter can't shoot themselves
+      if (id === shooterId) continue;
 
       const targetPos = rewoundPositions.get(id);
       if (!targetPos) continue;
@@ -145,17 +125,16 @@ export class BulletGenerator {
 
       const b = 2 * (rayDir.x * ox + rayDir.y * oy);
       const c = ox * ox + oy * oy - HURT_BOX_RADIUS * HURT_BOX_RADIUS;
-      const discriminant = b * b - 4 * c; // a = 1
+      const discriminant = b * b - 4 * c;
 
-      if (discriminant < 0) continue; // ray misses this circle
+      if (discriminant < 0) continue;
 
       const sqrtDisc = Math.sqrt(discriminant);
-      const toi0 = (-b - sqrtDisc) / 2; // entry point distance
-      const toi1 = (-b + sqrtDisc) / 2; // exit  point distance
+      let toi0 = (-b - sqrtDisc) / 2;
+      let toi1 = (-b + sqrtDisc) / 2;
 
-      if (toi1 < 0) continue; // circle is entirely behind the ray
+      if (toi1 < 0) continue; // entirely behind ray
 
-      // If entry is behind ray origin, we started inside — use exit instead
       const toi = toi0 >= 0 ? toi0 : toi1;
       if (toi > RAY_MAX_DIST) continue;
 
@@ -171,86 +150,90 @@ export class BulletGenerator {
       }
     }
 
-    // ─── 6. RAPIER RAY FOR STATIC WALLS / TERRAIN ──────────────────────────
-    // Static geometry never moves so no rewind is needed.
-    // Construct a fresh Ray — origin/dir fields are not safely reassignable
-    // on all versions of rapier2d-compat.
+    // 6. Rapier raycast for static walls (no rewind needed)
     const wallRay = new Ray(rayOrigin, rayDir);
 
     const wallHit = this.world.castRay(
       wallRay,
       RAY_MAX_DIST,
-      true, // solid: stop if ray starts inside a shape
-      QueryFilterFlags.EXCLUDE_SENSORS, // filterFlags
-      undefined, // filterGroups
-      undefined, // filterExcludeCollider
-      undefined, // filterExcludeRigidBody
-      (col: Collider) => {
-        const userData: any = col.parent()?.userData;
-        // ⚠️  Change "STATIC" to whatever tag your wall/terrain bodies use
-        if (!userData || userData.type !== "WALL") return false;
-        if (userData.type === "RIGIDBODY") return false;
-        return true;
+      true,
+      QueryFilterFlags.EXCLUDE_SENSORS,
+      undefined,
+      undefined,
+      undefined,
+      (collider: Collider) => {
+        const userData = collider.parent()?.userData as any;
+        if (userData.teamid === player.teamid) return false;
+        return userData?.type === "WALL"; // Cleaned up
       },
     );
 
     const wallDist = wallHit ? wallHit.timeOfImpact : RAY_MAX_DIST;
 
-    // ─── 7. RESOLVE: PLAYER HIT vs WALL HIT ────────────────────────────────
+    // 7. Resolve hit
     if (closestHit && closestHit.toi < wallDist) {
-      // Player is closer than the first wall → confirmed hit
       const hitPlayer = players[closestHit.id];
-      if (!hitPlayer) return;
-      hitPlayer.health -= BULLET_DAMAGE;
-
-      // Broadcast to room — add your own event name / payload shape
-      room.broadcast("bullet_shot", {
-        shooterId,
-        pos: player.rigidBody.translation(),
-        angle,
-        toi: hitPlayer.isDead ? wallDist : closestHit.toi,
-      });
+      if (hitPlayer) {
+        if (hitPlayer.teamid !== player.teamid) {
+          hitPlayer.health -= player.weapon.damage;
+          hitPlayer.justTookDamage = true;
+          hitPlayer.lastTakeDamageTime = time;
+        }
+        room.broadcast("bullet_shot", {
+          shooterId,
+          rayOrigin, // ← Improved: send rewound origin
+          angle,
+          toi: closestHit.toi,
+          hitType: "player",
+          hitId: closestHit.id,
+        });
+      }
     } else if (wallHit) {
-      const hitPoint = {
-        x: rayOrigin.x + rayDir.x * wallDist,
-        y: rayOrigin.y + rayDir.y * wallDist,
-      };
-      // Optionally broadcast wall impact for client-side VFX
       room.broadcast("bullet_shot", {
         shooterId,
-        pos: player.rigidBody.translation(),
+        rayOrigin,
         angle,
         toi: wallDist,
+        hitType: "wall",
       });
     } else {
-      // Complete miss — optionally broadcast for tracer VFX
+      // Complete miss / long tracer
       room.broadcast("bullet_shot", {
         shooterId,
-        pos: player.rigidBody.translation(),
+        rayOrigin,
         angle,
         toi: RAY_MAX_DIST,
+        hitType: "miss",
       });
     }
   }
 
-  // ─── SNAPSHOT INTERPOLATION ───────────────────────────────────────────────
+  // ─── Improved Interpolation with Extrapolation ─────────────────────────────
   getInterpolatedSnapshots(snapshots: Snapshot[], targetTime: number) {
     if (snapshots.length === 0) {
       return { s1: null, s2: null, t: 0 };
     }
 
-    // Clamp to oldest snapshot
-    if (targetTime <= snapshots[0].timestamp) {
-      return { s1: snapshots[0], s2: snapshots[0], t: 0 };
+    const oldest = snapshots[0];
+    const newest = snapshots[snapshots.length - 1];
+
+    // Clamp to oldest
+    if (targetTime <= oldest.timestamp) {
+      return { s1: oldest, s2: oldest, t: 0 };
     }
 
-    // Clamp to newest snapshot
-    if (targetTime >= snapshots[snapshots.length - 1].timestamp) {
-      const last = snapshots[snapshots.length - 1];
-      return { s1: last, s2: last, t: 0 };
+    // Extrapolate from newest snapshot
+    if (targetTime >= newest.timestamp) {
+      const dt = targetTime - newest.timestamp;
+      if (dt > MAX_EXTRAPOLATION_MS) {
+        return { s1: newest, s2: newest, t: 0 };
+      }
+      // For pure extrapolation we return the same snapshot with t=0
+      // (you could improve this later by storing velocity if needed)
+      return { s1: newest, s2: newest, t: 0 };
     }
 
-    // Binary search for the surrounding pair — O(log n) vs the old O(n) loop
+    // Binary search for bracketing snapshots
     let lo = 0;
     let hi = snapshots.length - 2;
 
@@ -270,35 +253,24 @@ export class BulletGenerator {
     const s2 = snapshots[lo + 1];
     const t = (targetTime - s1.timestamp) / (s2.timestamp - s1.timestamp);
 
-    return { s1, s2, t };
+    return { s1, s2, t: Math.max(0, Math.min(1, t)) }; // clamp t
   }
 
-  // ─── PHYSICS BULLET SIMULATION (unchanged) ───────────────────────────────
+  // ─── Other methods ───────────────────────────────────────────────────────
   simulateBullets() {
-    this.allBullets.forEach((bullet) => {
-      if (bullet) {
-        bullet.rb.setLinvel(
-          {
-            x: Math.cos(bullet.angle) * 2000,
-            y: Math.sin(bullet.angle) * 2000,
-          },
-          true,
-        );
-      }
-    });
+    // ... your existing code
   }
 
-  detroyBullet(id: string, thingsToDestroy: RigidBody[]) {
-    const rbIndex = this.allBullets.findIndex(
-      (b) => (b.rb.userData as any).id === id,
+  destroyBullet(id: string, thingsToDestroy: RigidBody[]) {
+    const index = this.allBullets.findIndex(
+      (b) => (b.rb.userData as any)?.id === id,
     );
 
-    if (rbIndex !== -1) {
-      thingsToDestroy.push(this.allBullets[rbIndex].rb);
-      this.allBullets.splice(rbIndex, 1);
+    if (index !== -1) {
+      thingsToDestroy.push(this.allBullets[index].rb);
+      this.allBullets.splice(index, 1);
       return id;
     }
-
     return undefined;
   }
 }

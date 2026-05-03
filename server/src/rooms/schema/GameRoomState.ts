@@ -23,6 +23,7 @@ export class Player extends Schema {
   @type("number") currentInputIndex: number = 0;
   @type("number") flipped: number = 1;
   @type("string") teamid: string = "";
+  @type("string") weaponName: string = "";
   @type("string") sessionId: string = "";
   @type("boolean") isMoving: boolean = false;
   @type("boolean") isSliding: boolean = false;

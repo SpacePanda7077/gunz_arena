@@ -10,8 +10,10 @@ import {
   World,
 } from "@dimforge/rapier2d-compat";
 import { Clamp, Normalize } from "../../Helper/Math/Math";
-import { time } from "console";
+import { getWeapons } from "../Weapons/Weapons";
 import { Room } from "colyseus";
+
+const weapons = getWeapons();
 
 export class Character {
   world: World;
@@ -44,11 +46,25 @@ export class Character {
   health: number;
   maxHealth: number;
   sessionId: string;
+  h_collider: any;
+  weapon: {
+    type: string;
+    name: string;
+    rpm: number;
+    range: number;
+    damage: number;
+    bulletPerShot: number;
+    isBurst: boolean;
+  };
+  justTookDamage: boolean;
+  lastTakeDamageTime: number;
+  lastAddHealthTime: number;
   constructor(
     world: World,
     position: { x: number; y: number },
     teamid: string,
     sessionId: string,
+    weapon: (typeof weapons)[0],
   ) {
     this.health = 300;
     this.maxHealth = this.health;
@@ -65,6 +81,9 @@ export class Character {
     this.isShooting = false;
     this.isJumping = false;
     this.isMoving = false;
+    this.justTookDamage = false;
+    this.lastTakeDamageTime = 0;
+    this.lastAddHealthTime = 0;
     this.flipped = 1;
     this.speed = 300;
     this.MaxSpeed = this.speed;
@@ -72,6 +91,7 @@ export class Character {
     this.animation = "idle";
     this.teamid = teamid;
     this.sessionId = sessionId;
+    this.weapon = weapon;
     this.create_body(position, teamid);
   }
   private create_body(position: { x: number; y: number }, teamid: string) {
@@ -90,15 +110,14 @@ export class Character {
       .setActiveCollisionTypes(ActiveCollisionTypes.ALL)
       .setActiveEvents(ActiveEvents.COLLISION_EVENTS);
     const collider_desc = ColliderDesc.cuboid(32, 8).setTranslation(0, 32);
-    this.collider = this.world.createCollider(
+    this.h_collider = this.world.createCollider(
       hurtBox_collider_desc,
       this.hurtBox_rigidBody,
     );
-    this.world.createCollider(collider_desc, this.rigidBody);
+    this.collider = this.world.createCollider(collider_desc, this.rigidBody);
     this.character_controller = this.world.createCharacterController(0.02);
     this.bulletRay = new Ray({ x: position.x, y: position.y }, { x: 0, y: 0 });
   }
-
   update_body(delta: number, time: number) {
     const dt = delta / 1000;
     this.calcSpeed();
@@ -134,6 +153,7 @@ export class Character {
     }
     this.rigidBody.setNextKinematicTranslation(nextPosition);
     this.hurtBox_rigidBody.setNextKinematicTranslation(hurtBoxPosition);
+    this.recoverHealth(time);
   }
 
   calcSpeed() {
@@ -183,8 +203,23 @@ export class Character {
     if (this.isDead) return;
     this.lastDeathTime = time;
     this.isDead = true;
-    this.collider.setSensor(true);
+    this.h_collider.setSensor(true);
     room.broadcast("player_died", { id: this.sessionId });
+  }
+  recoverHealth(time: number) {
+    if (this.justTookDamage && time > this.lastTakeDamageTime + 3000) {
+      this.justTookDamage = false;
+    }
+
+    if (!this.justTookDamage && this.health < this.maxHealth) {
+      if (time > this.lastAddHealthTime + 1000) {
+        this.health += 10;
+        this.lastAddHealthTime = time;
+        if (this.health > this.maxHealth) {
+          this.health = this.maxHealth;
+        }
+      }
+    }
   }
   respawn(
     time: number,
@@ -200,7 +235,7 @@ export class Character {
         this.rigidBody.setTranslation(pos, true);
         this.health = this.maxHealth;
         this.isDead = false;
-        this.collider.setSensor(false);
+        this.h_collider.setSensor(false);
         room.broadcast("respawn", { id: this.sessionId });
       }
     }

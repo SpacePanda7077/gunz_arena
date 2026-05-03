@@ -56,7 +56,7 @@ export class ChasingState {
         convertedPath.x,
         convertedPath.y,
       );
-      if (dist < 10) {
+      if (dist <= 64) {
         this.bot.isChasing = false;
         this.stateMamager.setState("wandering");
       }

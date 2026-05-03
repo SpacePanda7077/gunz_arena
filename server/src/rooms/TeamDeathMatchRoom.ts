@@ -15,6 +15,7 @@ import { BulletGenerator } from "../Components/BulletGenerator/BulletGenerator.j
 import { CollisionChecker } from "../Components/Collisionchecker/CollisionChecker.js";
 import { Bot } from "../Components/Bots/Bots.js";
 import uniqid from "uniqid";
+import { getWeapons } from "../Components/Weapons/Weapons.js";
 export class TeamDeathMatchRoom extends Room {
   maxClients = 6;
   state = new GameState();
@@ -48,6 +49,15 @@ export class TeamDeathMatchRoom extends Room {
   bulletGenerator: BulletGenerator;
   collisionChecker = new CollisionChecker();
   eventQueue: EventQueue;
+  weapons: {
+    type: string;
+    name: string;
+    rpm: number;
+    range: number;
+    damage: number;
+    bulletPerShot: number;
+    isBurst: boolean;
+  }[];
 
   async onCreate(options: any) {
     await this.InitRapier();
@@ -61,6 +71,7 @@ export class TeamDeathMatchRoom extends Room {
     this.matchController = new Match_Controller("TEAMDEATHMATCH");
     this.awaitForAllPlayer();
     this.map = new MapMaker(this.world, "killzone");
+    this.weapons = getWeapons();
     this.thingsToDestroy = [];
     this.bulletGenerator = new BulletGenerator(this.world);
 
@@ -126,8 +137,9 @@ export class TeamDeathMatchRoom extends Room {
         if (player.isShooting) {
           this.shoot(id, player.isShooting, Date.now());
         }
-        player.checkdistance(this.state, this.pastTime);
+        player.checkDistance(this.state, this.players, this.pastTime);
         const canSee = player.checkIfCanSee(this.players, this.fixedTick);
+
         player.canSee = canSee;
       }
       player.isMoving = player.direction.x !== 0 || player.direction.y !== 0;
@@ -186,7 +198,8 @@ export class TeamDeathMatchRoom extends Room {
   shoot(id: string, shoot: boolean, clientTimestamp: number) {
     const player = this.players[id];
     if (!shoot) return;
-    if (this.pastTime > player.lastShootTime + 50) {
+    const delay = (60 / player.weapon.rpm) * 1000;
+    if (this.pastTime > player.lastShootTime + delay) {
       const playerState = this.state.players.get(id);
       this.bulletGenerator.createBullet(
         player,
@@ -196,6 +209,7 @@ export class TeamDeathMatchRoom extends Room {
         playerState.aimAngle,
         id,
         this,
+        this.pastTime,
       );
       player.lastShootTime = this.pastTime;
     }
@@ -206,7 +220,6 @@ export class TeamDeathMatchRoom extends Room {
      * Called when a client joins the room.
      */
     console.log(client.sessionId, "joined!");
-    this.addBots();
     const id = client.sessionId;
     const teamData = options.teamData;
     const index = this.getMyTeam(teamData.id);
@@ -222,8 +235,23 @@ export class TeamDeathMatchRoom extends Room {
     player.y = mainPosition.y;
     player.sessionId = id;
     player.teamid = teamid;
-    this.players[id] = new Character(this.world, mainPosition, teamid, id);
+    const weapon = this.weapons[4];
+    player.weaponName = weapon.name;
+    this.players[id] = new Character(
+      this.world,
+      mainPosition,
+      teamid,
+      id,
+      weapon,
+    );
     this.state.players.set(id, player);
+
+    if (this.clients.length === this.metadata.playerCount) {
+      const remainingSpot = this.maxClients - this.clients.length;
+      for (let i = 0; i < remainingSpot; i++) {
+        this.addBots();
+      }
+    }
   }
 
   onLeave(client: Client, code: CloseCode) {
@@ -277,6 +305,8 @@ export class TeamDeathMatchRoom extends Room {
     player.y = mainPosition.y;
     player.sessionId = id;
     player.teamid = teamid;
+    const weapon = this.weapons[Math.floor(Math.random() * 4)];
+    player.weaponName = weapon.name;
     this.players[id] = new Bot(
       this.world,
       mainPosition,
@@ -284,9 +314,10 @@ export class TeamDeathMatchRoom extends Room {
       id,
       this.map.mapgrid,
       this.map.positions.allPossiblePosition,
+      weapon,
     );
     this.state.players.set(id, player);
-    teams[index].push({ sessionId: id, teamId: "bot_team" });
+    teams[index].push({ sessionId: id, teamId: teamid });
     console.log(teams);
   }
 }

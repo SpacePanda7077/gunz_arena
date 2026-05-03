@@ -3,6 +3,8 @@ import { Physics_Body } from "./Physics_Body";
 import { Math as PhaserMath } from "phaser";
 import { BulletGenerator } from "../BulletGenerator/BulletGenerator";
 import { AnimationController } from "../Animation_Controller/Animation_Controller";
+import { getWeapons } from "../Weapons/Weapons";
+const weapons = getWeapons();
 
 export class Character {
     scene: Phaser.Scene;
@@ -10,7 +12,7 @@ export class Character {
     body: Phaser.GameObjects.Container;
     physicsBody: Physics_Body;
     camTarget: Phaser.GameObjects.Rectangle;
-    weapon: Phaser.GameObjects.Rectangle;
+    weapon: Phaser.GameObjects.Sprite;
     lastShootTime = 0;
     root: Phaser.GameObjects.Container;
     main_body: Phaser.GameObjects.Container;
@@ -19,14 +21,28 @@ export class Character {
     shadow: Phaser.GameObjects.Ellipse;
     flipped = 1;
     health: Phaser.GameObjects.Text;
+    teamid: string;
+    weaponInfo: {
+        type: string;
+        name: string;
+        rpm: number;
+        range: number;
+        damage: number;
+        bulletPerShot: number;
+        isBurst: boolean;
+    };
     constructor(
         scene: Phaser.Scene,
         world: World,
         position: { x: number; y: number },
+        teamid: string,
+        weapon: (typeof weapons)[0],
     ) {
         this.scene = scene;
         this.world = world;
+        this.weaponInfo = weapon;
         this.create_body(position);
+        this.teamid = teamid;
     }
     create_body(position: { x: number; y: number }) {
         this.shadow = this.scene.add.ellipse(0, 0, 60, 20, 0x000000, 0.3);
@@ -37,14 +53,12 @@ export class Character {
         const head = this.scene.add.sprite(0, 0, "head");
         const right_hand = this.scene.add.sprite(0, 0, "right_hand");
         const left_hand = this.scene.add.sprite(25, 0, "left_hand");
-        this.weapon = this.scene.add
-            .rectangle(0, 0, 48, 15, 0xfff000)
-            .setOrigin(0.2, 0.8);
 
         this.body = this.scene.add.container(position.x, position.y);
         this.root = this.scene.add.container(0, 0);
         this.main_body = this.scene.add.container(0, 0);
         this.hand = this.scene.add.container(-10, 15);
+        this.loadWeapon();
 
         this.hand.add([this.weapon, right_hand, left_hand]);
         this.main_body.add([body, head]);
@@ -73,6 +87,48 @@ export class Character {
             .setVisible(false);
 
         this.physicsBody = new Physics_Body(this.world, position);
+    }
+
+    loadWeapon() {
+        this.weapon = this.scene.add
+            .sprite(0, 0, "__MISSING__")
+            .setVisible(false);
+
+        // Only load if the texture doesn't already exist
+        if (
+            this.scene.textures &&
+            !this.scene.textures.exists(this.weaponInfo.name)
+        ) {
+            if (this.scene.load) {
+                // ← Safety check
+                this.scene.load.image(
+                    this.weaponInfo.name,
+                    `weapons/weapons/${this.weaponInfo.name}/${this.weaponInfo.name}.png`,
+                );
+                this.scene.load.audio(
+                    this.weaponInfo.name,
+                    `weapons/weapons/${this.weaponInfo.name}/${this.weaponInfo.name}.wav`,
+                );
+
+                this.scene.load.once(
+                    `filecomplete-image-${this.weaponInfo.name}`,
+                    () => {
+                        if (this.weapon && !this.weapon.scene) return; // object destroyed
+                        this.weapon.setTexture(this.weaponInfo.name);
+                        this.weapon.setVisible(true);
+                    },
+                );
+
+                this.scene.load.start();
+            } else {
+                console.warn(
+                    `Loader not available for weapon: ${this.weaponInfo.name}`,
+                );
+            }
+        } else if (this.scene.textures?.exists(this.weaponInfo.name)) {
+            this.weapon.setTexture(this.weaponInfo.name);
+            this.weapon.setVisible(true);
+        }
     }
     updateVisual(alpha: number) {
         const position = this.physicsBody.hurtBox_rigidBody.translation();
@@ -155,15 +211,21 @@ export class Character {
             x: position.x + Math.cos(angle) * 50,
             y: position.y + Math.sin(angle) * 50,
         };
-        bulletGenerator.createBullet(pos, this.physicsBody.bulletRay, angle);
+        bulletGenerator.createBullet(
+            this,
+            pos,
+            this.physicsBody.bulletRay,
+            angle,
+        );
+        this.scene.sound.play(this.weaponInfo.name);
         this.lastShootTime = time;
         this.hand.x =
             this.hand.x + Math.cos(this.hand.rotation) * this.root.scaleX * -10;
         this.hand.y =
             this.hand.y + Math.sin(this.hand.rotation) * this.root.scaleX * -10;
         const vector = new PhaserMath.Vector2(
-            Math.cos(this.hand.rotation) * 0.005,
-            Math.sin(this.hand.rotation) * 0.005,
+            Math.cos(this.hand.rotation) * 0.003,
+            Math.sin(this.hand.rotation) * 0.003,
         );
         this.scene.cameras.main.shake(50, vector);
     }
@@ -205,16 +267,16 @@ export class Character {
             repeat: 0,
         });
         blood_splat.play("splash");
-        this.physicsBody.collider.setSensor(true);
+        this.physicsBody.h_collider.setSensor(true);
     }
     respawn() {
         const time = this.scene.time.addEvent({
-            delay: 1000,
+            delay: 100,
             callback: () => {
                 this.physicsBody.isDead = false;
                 this.body.setVisible(true);
                 this.shadow.setVisible(true);
-                this.physicsBody.collider.setSensor(false);
+                this.physicsBody.h_collider.setSensor(false);
                 time.destroy();
             },
             callbackScope: this.scene,

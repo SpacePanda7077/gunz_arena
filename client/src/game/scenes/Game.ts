@@ -11,6 +11,7 @@ import { backendPlayer } from "../Helper/SchemaTypes/PlayerSchemaType";
 import { BulletGenerator } from "../GameComponent/BulletGenerator/BulletGenerator";
 
 import { Loader } from "../Helper/Loader/Loader";
+import { getWeapons } from "../GameComponent/Weapons/Weapons";
 
 export class Game extends Scene {
     world: World;
@@ -50,6 +51,7 @@ export class Game extends Scene {
         this.frontendPlayers = {};
         this.pastTime = 0;
         this.mouse = { x: 0, y: 0 };
+        const weapons = getWeapons();
         this.bulletGenerator = new BulletGenerator(this, this.world);
         this.aimTarget = this.add
             .rectangle(200, 200, 20, 20, 0xff0000)
@@ -69,11 +71,20 @@ export class Game extends Scene {
             const id = sessionId as string;
             const backendPlayer = player as backendPlayer;
             console.log(backendPlayer, id);
-
-            this.frontendPlayers[id] = new Character(this, this.world, {
-                x: backendPlayer.x,
-                y: backendPlayer.y,
-            });
+            const weapon = weapons.find(
+                (w) => w.name === backendPlayer.weaponName,
+            );
+            if (!weapon) return;
+            this.frontendPlayers[id] = new Character(
+                this,
+                this.world,
+                {
+                    x: backendPlayer.x,
+                    y: backendPlayer.y,
+                },
+                backendPlayer.teamid,
+                weapon,
+            );
             if (id === this.room.sessionId) {
                 this.targetPlayer = this.add
                     .rectangle(
@@ -93,6 +104,7 @@ export class Game extends Scene {
                 );
                 this.inputHandler = new Input_Handler(this);
             }
+
             callbacks.onChange(player as any, () => {
                 const backendPlayer = player as backendPlayer;
 
@@ -161,6 +173,12 @@ export class Game extends Scene {
                     }
                 } else {
                     const f_player = this.frontendPlayers[id];
+                    if (
+                        f_player.teamid ===
+                        this.frontendPlayers[this.room.sessionId].teamid
+                    ) {
+                        f_player.health.setVisible(false);
+                    }
                     const position =
                         f_player.physicsBody.rigidBody.translation();
                     f_player.health.text = backendPlayer.health.toString();
@@ -214,13 +232,17 @@ export class Game extends Scene {
             "bullet_shot",
             (data: {
                 shooterId: string;
-                pos: { x: number; y: number };
+                rayOrigin: { x: number; y: number };
                 angle: number;
                 toi: number;
             }) => {
                 console.log("shooting");
                 if (data.shooterId === this.room.sessionId) return;
-                this.bulletGenerator.drawBullet(data.pos, data.angle, data.toi);
+                this.bulletGenerator.drawBullet(
+                    data.rayOrigin,
+                    data.angle,
+                    data.toi,
+                );
             },
         );
         this.room.onMessage("deleteBullet", (id: string) => {
@@ -254,7 +276,7 @@ export class Game extends Scene {
             }
         }
 
-        this.debugRenderer.render();
+        //this.debugRenderer.render();
     }
     fixedUpdate(time: number) {
         this.pastTime += this.fixedTick;

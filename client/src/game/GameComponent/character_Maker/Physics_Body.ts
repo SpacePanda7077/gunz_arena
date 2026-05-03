@@ -35,6 +35,7 @@ export class Physics_Body {
     isJumping: boolean;
     isMoving: boolean;
     bulletRay: Ray;
+    h_collider: Collider;
 
     constructor(world: World, position: { x: number; y: number }) {
         this.direction = { x: 0, y: 0 };
@@ -71,11 +72,14 @@ export class Physics_Body {
 
         const hurtBox_collider_desc = ColliderDesc.ball(30);
         const collider_desc = ColliderDesc.cuboid(32, 8).setTranslation(0, 32);
-        this.collider = this.world.createCollider(
+        this.h_collider = this.world.createCollider(
             hurtBox_collider_desc,
             this.hurtBox_rigidBody,
         );
-        this.world.createCollider(collider_desc, this.rigidBody);
+        this.collider = this.world.createCollider(
+            collider_desc,
+            this.rigidBody,
+        );
 
         this.character_controller = this.world.createCharacterController(0.02);
         this.bulletRay = new Ray(

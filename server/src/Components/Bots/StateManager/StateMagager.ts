@@ -26,6 +26,7 @@ export class StateManager {
   }
   setState(state: "wandering" | "chasing") {
     this.currentState = this.states[state];
+    this.currentState.finish();
     this.currentState.start();
   }
   update(currentTarget: Character | Bot, time: number) {

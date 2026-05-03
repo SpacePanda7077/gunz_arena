@@ -23,6 +23,9 @@ import { StateManager } from "./StateManager/StateMagager";
 import { type GameState } from "../../rooms/schema/GameRoomState";
 import { Character } from "../Character/Character";
 import { Room } from "colyseus";
+import { getWeapons } from "../Weapons/Weapons";
+
+const weapons = getWeapons();
 
 export class Bot {
   world: World;
@@ -74,6 +77,18 @@ export class Bot {
   sessionId: string;
   grid: number[][];
   allPossiblePositions: { x: number; y: number }[];
+  weapon: {
+    type: string;
+    name: string;
+    rpm: number;
+    range: number;
+    damage: number;
+    bulletPerShot: number;
+    isBurst: boolean;
+  };
+  justTookDamage: boolean;
+  lastTakeDamageTime: number;
+  lastAddHealthTime: number;
   constructor(
     world: World,
     position: { x: number; y: number },
@@ -81,6 +96,7 @@ export class Bot {
     sessionId: string,
     grid: number[][],
     allPossiblePosition: { x: number; y: number }[],
+    weapon: (typeof weapons)[0],
   ) {
     this.health = 300;
     this.maxHealth = this.health;
@@ -102,6 +118,9 @@ export class Bot {
     this.canSee = false;
     this.isChasing = false;
     this.isAttacking = false;
+    this.justTookDamage = false;
+    this.lastTakeDamageTime = 0;
+    this.lastAddHealthTime = 0;
     this.speed = 200;
     this.MaxSpeed = this.speed;
     this.world = world;
@@ -113,6 +132,7 @@ export class Bot {
     this.grid = grid;
     this.allPossiblePositions = allPossiblePosition;
     this.create_body(position, teamid, grid, allPossiblePosition);
+    this.weapon = weapon;
   }
   private create_body(
     position: { x: number; y: number },
@@ -134,7 +154,7 @@ export class Bot {
     const hurtBox_collider_desc = ColliderDesc.ball(20)
       .setActiveCollisionTypes(ActiveCollisionTypes.ALL)
       .setActiveEvents(ActiveEvents.COLLISION_EVENTS);
-    const collider_desc = ColliderDesc.cuboid(20, 8).setTranslation(0, 32);
+    const collider_desc = ColliderDesc.cuboid(15, 15).setTranslation(0, 32);
     this.world.createCollider(hurtBox_collider_desc, this.hurtBox_rigidBody);
     this.collider = this.world.createCollider(collider_desc, this.rigidBody);
     this.character_controller = this.world.createCharacterController(0.02);
@@ -289,72 +309,75 @@ export class Bot {
     this.sensors.forEach((s) => {
       s.origin = { x: position.x, y: position.y + 32 };
     });
-    this.canSeeRay.origin = position;
+    this.canSeeRay.origin = { x: position.x, y: position.y + 32 };
   }
+  checkDistance(
+    state: GameState,
+    players: { [key: string]: Character | Bot },
+    time: number,
+  ) {
+    if (time <= this.lastDistanceCheckTime + 300) return;
 
-  checkdistance(state: GameState, time: number) {
-    if (time > this.lastDistanceCheckTime + 300) {
-      const position = this.rigidBody.translation();
-      const target = state.players.forEach((p) => {
-        if (p.teamid !== this.teamid) {
-          const dist = DistanceBetween(position.x, position.y, p.x, p.y);
-          if (dist < this.viewDistance) {
-            this.canAttack = true;
+    const position = this.rigidBody.translation();
+    let bestTarget: any = null;
+    let bestDistance = Infinity;
 
-            this.currentTargetId = p.sessionId;
-          } else {
-            this.canAttack = false;
-            this.currentTargetId = "";
-          }
-        }
-      });
-      this.lastDistanceCheckTime = time;
+    // Find closest enemy in view distance
+    for (const p of state.players.values()) {
+      if (p.teamid === this.teamid || players[p.sessionId].isDead) continue;
+
+      const dist = DistanceBetween(position.x, position.y, p.x, p.y);
+
+      if (dist < this.viewDistance && dist < bestDistance) {
+        bestDistance = dist;
+        bestTarget = p;
+      }
     }
+
+    if (bestTarget) {
+      this.canAttack = true;
+      this.currentTargetId = bestTarget.sessionId;
+    } else {
+      this.canAttack = false;
+      this.currentTargetId = "";
+    }
+
+    this.lastDistanceCheckTime = time;
   }
   checkIfCanSee(players: { [key: string]: Character | Bot }, delta: number) {
-    if (!this.canAttack) return;
-    const position = this.rigidBody.translation();
+    if (!this.currentTargetId) {
+      this.isShooting = false;
+      return false;
+    }
+
     this.currentTarget = players[this.currentTargetId];
+    if (!this.currentTarget || this.currentTarget.isDead) {
+      this.isShooting = false;
+      this.currentTargetId = "";
+      this.canAttack = false;
+      return false;
+    }
+
+    const position = this.rigidBody.translation();
     const targetPosition = this.currentTarget.rigidBody.translation();
-    const angle = AngleBetween(
+
+    const targetAngle = AngleBetween(
       position.x,
       position.y,
       targetPosition.x,
       targetPosition.y,
     );
-    // 2. Define spread (e.g., 0.15 radians is about 8.5 degrees)
-    const turnspeed = 1.5;
-    const dt = delta / 1000;
 
-    // 4. Apply the variation to the final angle
-    this.angle = RotateToward(this.angle, angle, turnspeed * dt);
+    const dt = delta / 1000;
+    const turnSpeed = 2.2;
+
+    this.angle = RotateToward(this.angle, targetAngle, turnSpeed * dt);
 
     const dir = {
-      x: Math.cos(angle),
-      y: Math.sin(angle),
+      x: Math.cos(this.angle),
+      y: Math.sin(this.angle),
     };
     this.canSeeRay.dir = dir;
-    const hit = this.world.castRay(
-      this.canSeeRay,
-      this.viewDistance,
-      true,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      (col) => {
-        if ((col.parent().userData as any).type === "RIGIDBODY") {
-          return false;
-        }
-        if (
-          (col.parent().userData as any).type === "PLAYER" &&
-          (col.parent().userData as any).teamid === this.teamid
-        ) {
-          return false;
-        }
-        return true;
-      },
-    );
 
     const dist = DistanceBetween(
       position.x,
@@ -362,29 +385,65 @@ export class Bot {
       targetPosition.x,
       targetPosition.y,
     );
-    const diff = AngleDifference(this.angle, angle);
-    if (dist <= 300 && this.canSee && Math.abs(diff) < 0.15) {
-      const spread = 0.6;
+
+    // === RAYCAST WITH PROPER FILTER ===
+    const hit = this.world.castRay(
+      this.canSeeRay,
+      this.viewDistance,
+      true, // solid
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      (col) => {
+        const userData = col.parent().userData as any;
+
+        // Skip these completely (ray goes through)
+        if (userData.type === "RIGIDBODY") return false;
+
+        // IMPORTANT: Return TRUE for walls so the ray STOPS at them
+        if (userData.type === "WALL") return true;
+
+        // Skip teammates
+        if (userData.type === "PLAYER" && userData.teamid === this.teamid) {
+          return false;
+        }
+
+        return true; // accept other players, obstacles, etc.
+      },
+    );
+
+    const angleDiff = AngleDifference(this.angle, targetAngle);
+
+    const isAimedWell = Math.abs(angleDiff) < 0.18;
+    const isInRange = dist <= 300;
+
+    // Only shoot if we have clear line of sight
+    if (isInRange && isAimedWell && this.canSee) {
+      const spread = 0.5;
       const variation = (Math.random() * 2 - 1) * spread;
       this.angle += variation;
+
       this.isShooting = true;
     } else {
       this.isShooting = false;
     }
+
+    // Check if we actually see the target (nothing blocking)
     if (
       hit &&
       (hit.collider.parent().userData as any).type === "PLAYER" &&
       !this.currentTarget.isDead
     ) {
       this.lastSeenPosition = {
-        x: position.x + Math.cos(angle) * hit.timeOfImpact,
-        y: position.y + Math.sin(angle) * hit.timeOfImpact,
+        x: position.x + Math.cos(this.angle) * hit.timeOfImpact,
+        y: position.y + Math.sin(this.angle) * hit.timeOfImpact,
       };
       return true;
     }
+
     return false;
   }
-
   die(time: number, room: Room) {
     if (this.isDead) return;
     this.lastDeathTime = time;
