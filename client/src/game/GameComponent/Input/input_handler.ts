@@ -17,6 +17,7 @@ export class Input_Handler {
         computedMovement: { x: number; y: number };
         slide: boolean;
         shoot: { shoot: boolean; timestamp: number };
+        reload: boolean;
         speed: number;
         inputIndex: number;
     }[];
@@ -89,6 +90,7 @@ export class Input_Handler {
                 shoot: this.scene.input.activePointer.leftButtonDown(),
                 timestamp: Date.now(),
             },
+            reload: this.scene.input.activePointer.rightButtonDown(),
 
             speed: player.physicsBody.speed,
             inputIndex: this.inputIndex,
@@ -105,6 +107,9 @@ export class Input_Handler {
         room.send("move", entry);
         if (entry.slide && player.physicsBody.isMoving) {
             player.physicsBody.slide();
+        }
+        if (entry.reload) {
+            player.reload();
         }
         if (entry.shoot.shoot) {
             player.physicsBody.isShooting = true;

@@ -12,6 +12,7 @@ export class Player extends Schema {
     aimPos: { x: number; y: number };
     slide: boolean;
     shoot: { shoot: boolean; timestamp: number };
+    reload: boolean;
     speed: number;
     inputIndex: number;
   }[] = [];

@@ -9,7 +9,8 @@
         "@colyseus/sdk": "^0.17.37",
         "@dimforge/rapier2d-compat": "^0.19.3",
         "@tailwindcss/vite": "^4.2.2",
-        "phaser": "^4.0.0",
+        "phaser": "^3.90.0",
+        "phaser-raycaster": "^0.10.11",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "tailwindcss": "^4.2.2",
@@ -516,7 +517,9 @@
 
     "path-key": ["path-key@3.1.1", "", {}, "sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q=="],
 
-    "phaser": ["phaser@4.0.0", "", { "dependencies": { "eventemitter3": "^5.0.4" } }, "sha512-f9oYpu3/UymB5JJDZRqOsNQm5FkMMC7u8eL8yQuqGAa54wTbgE2QbTOn70vgvlOVuYeQcw2mOQ52PpJHBSBkfQ=="],
+    "phaser": ["phaser@3.90.0", "", { "dependencies": { "eventemitter3": "^5.0.1" } }, "sha512-/cziz/5ZIn02uDkC9RzN8VF9x3Gs3XdFFf9nkiMEQT3p7hQlWuyjy4QWosU802qqno2YSLn2BfqwOKLv/sSVfQ=="],
+
+    "phaser-raycaster": ["phaser-raycaster@0.10.11", "", {}, "sha512-yM3dMT3yq3hX4mz+58chJhdDj3WTj6pd/F6aQ4FYcqNpYj7YzflNhs7hJuM7YDTZ+6Lyb2KyH27leCWmDZrjnw=="],
 
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 

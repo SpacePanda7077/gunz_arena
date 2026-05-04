@@ -4,6 +4,7 @@ import { Math as PhaserMath } from "phaser";
 import { BulletGenerator } from "../BulletGenerator/BulletGenerator";
 import { AnimationController } from "../Animation_Controller/Animation_Controller";
 import { getWeapons } from "../Weapons/Weapons";
+import { HealthBar } from "../ui/healthbar";
 const weapons = getWeapons();
 
 export class Character {
@@ -20,7 +21,7 @@ export class Character {
     animation_controller: AnimationController;
     shadow: Phaser.GameObjects.Ellipse;
     flipped = 1;
-    health: Phaser.GameObjects.Text;
+    health: HealthBar;
     teamid: string;
     weaponInfo: {
         type: string;
@@ -28,9 +29,17 @@ export class Character {
         rpm: number;
         range: number;
         damage: number;
+        magSize: number;
+        reloadTime: number;
         bulletPerShot: number;
         isBurst: boolean;
     };
+    mag: number;
+    gunsound:
+        | Phaser.Sound.NoAudioSound
+        | Phaser.Sound.HTML5AudioSound
+        | Phaser.Sound.WebAudioSound;
+
     constructor(
         scene: Phaser.Scene,
         world: World,
@@ -41,12 +50,14 @@ export class Character {
         this.scene = scene;
         this.world = world;
         this.weaponInfo = weapon;
+        this.mag = this.weaponInfo.magSize;
+
         this.create_body(position);
         this.teamid = teamid;
     }
     create_body(position: { x: number; y: number }) {
-        this.shadow = this.scene.add.ellipse(0, 0, 60, 20, 0x000000, 0.3);
-        this.health = this.scene.add.text(position.x, position.y - 100, "300");
+        this.shadow = this.scene.add.ellipse(0, 32, 60, 20, 0x000000, 0.3);
+        this.health = new HealthBar(this.scene, position.x, position.y);
         const right_leg = this.scene.add.sprite(-8, 23, "right_leg");
         const left_leg = this.scene.add.sprite(8, 23, "left_leg");
         const body = this.scene.add.sprite(0, 0, "body");
@@ -63,7 +74,13 @@ export class Character {
         this.hand.add([this.weapon, right_hand, left_hand]);
         this.main_body.add([body, head]);
 
-        this.root.add([left_leg, right_leg, this.main_body, this.hand]);
+        this.root.add([
+            this.shadow,
+            left_leg,
+            right_leg,
+            this.main_body,
+            this.hand,
+        ]);
 
         this.body.add(this.root);
         const bodyParts = {
@@ -83,7 +100,7 @@ export class Character {
         );
 
         this.camTarget = this.scene.add
-            .rectangle(position.x, position.y, 32, 32, 0xff0000)
+            .rectangle(position.x, position.y + 32, 32, 32, 0xff0000)
             .setVisible(false);
 
         this.physicsBody = new Physics_Body(this.world, position);
@@ -116,6 +133,9 @@ export class Character {
                         if (this.weapon && !this.weapon.scene) return; // object destroyed
                         this.weapon.setTexture(this.weaponInfo.name);
                         this.weapon.setVisible(true);
+                        this.gunsound = this.scene.sound.add(
+                            this.weaponInfo.name,
+                        );
                     },
                 );
 
@@ -131,15 +151,15 @@ export class Character {
         }
     }
     updateVisual(alpha: number) {
-        const position = this.physicsBody.hurtBox_rigidBody.translation();
-        const shadowposition = this.physicsBody.rigidBody.translation();
+        const position = this.physicsBody.rigidBody.translation();
+
         const interpolatedPos = {
             x: PhaserMath.Linear(this.body.x, position.x, alpha),
             y: PhaserMath.Linear(this.body.y, position.y, alpha),
         };
         this.body.setPosition(interpolatedPos.x, interpolatedPos.y);
-        this.camTarget.setPosition(shadowposition.x, shadowposition.y);
-        this.shadow.setPosition(shadowposition.x, shadowposition.y + 32);
+        this.camTarget.setPosition(position.x, position.y + 32);
+
         this.health.setPosition(interpolatedPos.x, interpolatedPos.y - 100);
     }
     handleAnimations() {
@@ -177,7 +197,7 @@ export class Character {
         }
     }
     updateWeaponRotation(aimPos: { x: number; y: number }) {
-        const position = this.physicsBody.hurtBox_rigidBody.translation();
+        const position = this.physicsBody.rigidBody.translation();
         const angle = PhaserMath.Angle.Between(
             position.x,
             position.y,
@@ -200,6 +220,9 @@ export class Character {
         bulletGenerator: BulletGenerator,
         aimPos: { x: number; y: number },
     ) {
+        if (this.mag <= 0) {
+            return;
+        }
         const position = this.physicsBody.rigidBody.translation();
         const angle = PhaserMath.Angle.Between(
             position.x,
@@ -217,7 +240,8 @@ export class Character {
             this.physicsBody.bulletRay,
             angle,
         );
-        this.scene.sound.play(this.weaponInfo.name);
+        this.gunsound.play();
+        this.mag--;
         this.lastShootTime = time;
         this.hand.x =
             this.hand.x + Math.cos(this.hand.rotation) * this.root.scaleX * -10;
@@ -230,7 +254,7 @@ export class Character {
         this.scene.cameras.main.shake(50, vector);
     }
     flipCharacter(aimPos: { x: number; y: number }) {
-        const position = this.physicsBody.hurtBox_rigidBody.translation();
+        const position = this.physicsBody.rigidBody.translation();
         if (this.physicsBody.isShooting) {
             if (aimPos.x < position.x) {
                 this.root.setScale(-1, 1);
@@ -241,6 +265,30 @@ export class Character {
             if (this.physicsBody.direction.x !== 0) {
                 this.root.setScale(this.flipped, 1);
             }
+        }
+    }
+
+    reload() {
+        if (this.mag >= this.weaponInfo.magSize) return;
+        const reloadTime = this.weaponInfo.reloadTime * 1000;
+        if (this.physicsBody.isReloading) return;
+        this.physicsBody.isReloading = true;
+        const uiscene: any = this.scene.scene.get("Ui");
+
+        uiscene.reload(this.weaponInfo.reloadTime);
+        this.scene.time.addEvent({
+            delay: reloadTime,
+            callback: () => {
+                this.mag = this.weaponInfo.magSize;
+                this.physicsBody.isReloading = false;
+                uiscene.reloadUi.setVisible(false);
+            },
+            callbackScope: this.scene,
+        });
+    }
+    autoreload() {
+        if (this.mag <= 0) {
+            this.reload();
         }
     }
 
@@ -267,6 +315,18 @@ export class Character {
             repeat: 0,
         });
         blood_splat.play("splash");
+        blood_splat.once("animationcomplete", () => {
+            const tween = this.scene.tweens.add({
+                targets: blood,
+                alpha: 0,
+                duration: 1000,
+                onComplete: () => {
+                    blood.destroy();
+                    blood_splat.destroy();
+                    tween.destroy();
+                },
+            });
+        });
         this.physicsBody.h_collider.setSensor(true);
     }
     respawn() {
@@ -277,6 +337,7 @@ export class Character {
                 this.body.setVisible(true);
                 this.shadow.setVisible(true);
                 this.physicsBody.h_collider.setSensor(false);
+                this.mag = this.weaponInfo.magSize;
                 time.destroy();
             },
             callbackScope: this.scene,

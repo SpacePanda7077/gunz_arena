@@ -18,12 +18,11 @@ const weapons = getWeapons();
 export class Character {
   world: World;
   rigidBody: RigidBody;
-  collider: any;
   velocity: { x: number; y: number };
   direction: { x: number; y: number };
   character_controller: KinematicCharacterController;
   speed: number;
-  hurtBox_rigidBody: RigidBody;
+
   z: number;
   isSliding: boolean;
   JUMP_HEIGHT: number;
@@ -47,18 +46,23 @@ export class Character {
   maxHealth: number;
   sessionId: string;
   h_collider: any;
+
+  justTookDamage: boolean;
+  lastTakeDamageTime: number;
+  lastAddHealthTime: number;
   weapon: {
     type: string;
     name: string;
     rpm: number;
     range: number;
     damage: number;
+    magSize: number;
+    reloadTime: number;
     bulletPerShot: number;
     isBurst: boolean;
   };
-  justTookDamage: boolean;
-  lastTakeDamageTime: number;
-  lastAddHealthTime: number;
+  mag: number;
+  isReloading: boolean;
   constructor(
     world: World,
     position: { x: number; y: number },
@@ -82,6 +86,7 @@ export class Character {
     this.isJumping = false;
     this.isMoving = false;
     this.justTookDamage = false;
+    this.isReloading = false;
     this.lastTakeDamageTime = 0;
     this.lastAddHealthTime = 0;
     this.flipped = 1;
@@ -92,29 +97,26 @@ export class Character {
     this.teamid = teamid;
     this.sessionId = sessionId;
     this.weapon = weapon;
+    this.mag = weapon.magSize;
     this.create_body(position, teamid);
   }
   private create_body(position: { x: number; y: number }, teamid: string) {
     const hurtBox_rigid_body_desc = RigidBodyDesc.kinematicPositionBased()
       .setTranslation(position.x, position.y)
       .setUserData({ type: "PLAYER", teamid, sessionId: this.sessionId });
-    const rigid_body_desc = RigidBodyDesc.kinematicPositionBased()
-      .setTranslation(position.x, position.y)
-      .setUserData({ type: "RIGIDBODY" });
 
-    this.hurtBox_rigidBody = this.world.createRigidBody(
-      hurtBox_rigid_body_desc,
-    );
-    this.rigidBody = this.world.createRigidBody(rigid_body_desc);
-    const hurtBox_collider_desc = ColliderDesc.ball(30)
+    this.rigidBody = this.world.createRigidBody(hurtBox_rigid_body_desc);
+
+    const hurtBox_collider_desc = ColliderDesc.capsule(15, 20)
+      .setTranslation(0, 5)
       .setActiveCollisionTypes(ActiveCollisionTypes.ALL)
       .setActiveEvents(ActiveEvents.COLLISION_EVENTS);
-    const collider_desc = ColliderDesc.cuboid(32, 8).setTranslation(0, 32);
+
     this.h_collider = this.world.createCollider(
       hurtBox_collider_desc,
-      this.hurtBox_rigidBody,
+      this.rigidBody,
     );
-    this.collider = this.world.createCollider(collider_desc, this.rigidBody);
+
     this.character_controller = this.world.createCharacterController(0.02);
     this.bulletRay = new Ray({ x: position.x, y: position.y }, { x: 0, y: 0 });
   }
@@ -128,7 +130,7 @@ export class Character {
     this.velocity.y = this.direction.y * this.speed * dt;
 
     this.character_controller.computeColliderMovement(
-      this.collider,
+      this.h_collider,
       this.velocity,
       QueryFilterFlags.ONLY_FIXED,
     );
@@ -139,10 +141,7 @@ export class Character {
       x: position.x + computedMovement.x,
       y: position.y + computedMovement.y,
     };
-    const hurtBoxPosition = {
-      x: nextPosition.x,
-      y: nextPosition.y + this.z,
-    };
+
     const numCollisions = this.character_controller.numComputedCollisions();
 
     for (let i = 0; i < numCollisions; i++) {
@@ -152,24 +151,24 @@ export class Character {
       }
     }
     this.rigidBody.setNextKinematicTranslation(nextPosition);
-    this.hurtBox_rigidBody.setNextKinematicTranslation(hurtBoxPosition);
     this.recoverHealth(time);
   }
 
   calcSpeed() {
     if (this.isSliding) {
-      this.speed *= 0.95;
+      this.speed *= 0.96;
       if (this.speed <= 200) {
         this.isSliding = false;
       }
-    } else if (this.isShooting) {
-      this.speed = 120;
+    } else if (this.isShooting || this.isReloading) {
+      this.speed = 150;
     } else {
       this.speed = this.MaxSpeed;
     }
   }
 
   slide() {
+    if (this.isReloading) return;
     if (!this.isSliding && !this.isShooting) {
       this.speed = 450;
       this.isSliding = true;
@@ -198,7 +197,21 @@ export class Character {
       }
     }
   }
-
+  reload(room: Room) {
+    if (this.mag >= this.weapon.magSize) return;
+    const reloadTime = this.weapon.reloadTime * 1000;
+    if (this.isReloading) return;
+    this.isReloading = true;
+    room.clock.setTimeout(() => {
+      this.mag = this.weapon.magSize;
+      this.isReloading = false;
+    }, reloadTime);
+  }
+  autoreload(room: Room) {
+    if (this.mag <= 0) {
+      this.reload(room);
+    }
+  }
   die(time: number, room: Room) {
     if (this.isDead) return;
     this.lastDeathTime = time;
@@ -234,6 +247,7 @@ export class Character {
           ];
         this.rigidBody.setTranslation(pos, true);
         this.health = this.maxHealth;
+        this.mag = this.weapon.magSize;
         this.isDead = false;
         this.h_collider.setSensor(false);
         room.broadcast("respawn", { id: this.sessionId });

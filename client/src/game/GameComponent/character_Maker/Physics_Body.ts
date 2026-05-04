@@ -18,7 +18,7 @@ export class Physics_Body {
     direction: { x: number; y: number };
     character_controller: KinematicCharacterController;
     speed: number;
-    hurtBox_rigidBody: RigidBody;
+
     z: number;
     isDead = false;
     JUMP_HEIGHT: number;
@@ -36,6 +36,7 @@ export class Physics_Body {
     isMoving: boolean;
     bulletRay: Ray;
     h_collider: Collider;
+    isReloading: boolean;
 
     constructor(world: World, position: { x: number; y: number }) {
         this.direction = { x: 0, y: 0 };
@@ -50,6 +51,7 @@ export class Physics_Body {
         this.isSliding = false;
         this.isJumping = false;
         this.isMoving = false;
+        this.isReloading = false;
         this.speed = 300;
         this.MaxSpeed = this.speed;
         this.world = world;
@@ -61,23 +63,16 @@ export class Physics_Body {
                 position.x,
                 position.y,
             );
-        const rigid_body_desc = RigidBodyDesc.kinematicPositionBased()
-            .setTranslation(position.x, position.y)
-            .setUserData({ type: "RIGIDBODY" });
 
-        this.hurtBox_rigidBody = this.world.createRigidBody(
-            hurtBox_rigid_body_desc,
-        );
-        this.rigidBody = this.world.createRigidBody(rigid_body_desc);
+        this.rigidBody = this.world.createRigidBody(hurtBox_rigid_body_desc);
 
-        const hurtBox_collider_desc = ColliderDesc.ball(30);
-        const collider_desc = ColliderDesc.cuboid(32, 8).setTranslation(0, 32);
+        const hurtBox_collider_desc = ColliderDesc.capsule(
+            15,
+            20,
+        ).setTranslation(0, 5);
+
         this.h_collider = this.world.createCollider(
             hurtBox_collider_desc,
-            this.hurtBox_rigidBody,
-        );
-        this.collider = this.world.createCollider(
-            collider_desc,
             this.rigidBody,
         );
 
@@ -98,7 +93,7 @@ export class Physics_Body {
         this.velocity.y = this.direction.y * this.speed * dt;
 
         this.character_controller.computeColliderMovement(
-            this.collider,
+            this.h_collider,
             this.velocity,
             QueryFilterFlags.ONLY_FIXED,
         );
@@ -109,10 +104,6 @@ export class Physics_Body {
             x: position.x + computedMovement.x,
             y: position.y + computedMovement.y,
         };
-        const hurtBoxPosition = {
-            x: nextPosition.x,
-            y: nextPosition.y,
-        };
         const numCollisions = this.character_controller.numComputedCollisions();
 
         for (let i = 0; i < numCollisions; i++) {
@@ -122,24 +113,24 @@ export class Physics_Body {
             }
         }
         this.rigidBody.setNextKinematicTranslation(nextPosition);
-        this.hurtBox_rigidBody.setNextKinematicTranslation(hurtBoxPosition);
         return computedMovement;
     }
 
     calcSpeed() {
         if (this.isSliding) {
-            this.speed *= 0.95;
+            this.speed *= 0.96;
             if (this.speed <= 200) {
                 this.isSliding = false;
             }
-        } else if (this.isShooting) {
-            this.speed = 120;
+        } else if (this.isShooting || this.isReloading) {
+            this.speed = 150;
         } else {
             this.speed = this.MaxSpeed;
         }
     }
 
     slide() {
+        if (this.isReloading) return;
         if (!this.isSliding && !this.isShooting) {
             this.speed = 450;
             this.isSliding = true;

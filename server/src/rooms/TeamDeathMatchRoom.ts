@@ -36,6 +36,7 @@ export class TeamDeathMatchRoom extends Room {
         aimPos: { x: number; y: number };
         slide: boolean;
         shoot: { shoot: boolean; timestamp: number };
+        reload: boolean;
         speed: number;
         inputIndex: number;
       },
@@ -55,6 +56,8 @@ export class TeamDeathMatchRoom extends Room {
     rpm: number;
     range: number;
     damage: number;
+    magSize: number;
+    reloadTime: number;
     bulletPerShot: number;
     isBurst: boolean;
   }[];
@@ -102,6 +105,9 @@ export class TeamDeathMatchRoom extends Room {
         if (!player.isSliding) {
           player.handleInput(input.input);
         }
+        if (input.reload) {
+          player.reload(this);
+        }
         if (input.input.x !== 0) {
           player.flipped = Math.sign(input.input.x);
         }
@@ -145,6 +151,7 @@ export class TeamDeathMatchRoom extends Room {
       player.isMoving = player.direction.x !== 0 || player.direction.y !== 0;
 
       player.update_body(this.fixedTick, this.pastTime);
+      player.autoreload(this);
 
       player.handleAnimations();
       if (player.health <= 0) {
@@ -197,7 +204,8 @@ export class TeamDeathMatchRoom extends Room {
 
   shoot(id: string, shoot: boolean, clientTimestamp: number) {
     const player = this.players[id];
-    if (!shoot) return;
+    if (!shoot || player.mag <= 0) return;
+
     const delay = (60 / player.weapon.rpm) * 1000;
     if (this.pastTime > player.lastShootTime + delay) {
       const playerState = this.state.players.get(id);
@@ -211,6 +219,7 @@ export class TeamDeathMatchRoom extends Room {
         this,
         this.pastTime,
       );
+      player.mag--;
       player.lastShootTime = this.pastTime;
     }
   }
@@ -235,7 +244,7 @@ export class TeamDeathMatchRoom extends Room {
     player.y = mainPosition.y;
     player.sessionId = id;
     player.teamid = teamid;
-    const weapon = this.weapons[4];
+    const weapon = this.weapons[5];
     player.weaponName = weapon.name;
     this.players[id] = new Character(
       this.world,

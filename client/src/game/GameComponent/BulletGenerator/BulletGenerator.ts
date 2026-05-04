@@ -64,6 +64,33 @@ export class BulletGenerator {
                 return true;
             },
         );
+        if (hit) {
+            const dist = hit.timeOfImpact - 10;
+            const hitPos = {
+                x: pos.x + Math.cos(angle) * dist,
+                y: pos.y + Math.sin(angle) * dist,
+            };
+            const effect = this.scene.add.sprite(
+                hitPos.x,
+                hitPos.y,
+                "bulletImpact1",
+            );
+
+            effect.rotation = Math.PI + angle;
+            effect.anims.create({
+                key: "hit",
+                frames: effect.anims.generateFrameNumbers("bulletImpact1", {
+                    start: 0,
+                    end: 6,
+                }),
+                frameRate: 13,
+                repeat: 0,
+            });
+            effect.play("hit");
+            effect.once("animationcomplete", () => {
+                effect.destroy();
+            });
+        }
 
         const graphics = this.scene.add.graphics();
         graphics.lineStyle(3.5, 0xffffff, 0.5);

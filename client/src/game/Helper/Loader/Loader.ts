@@ -17,6 +17,16 @@ export class Loader {
             "weapons/muzzle_flash/assault/assault.png",
             { frameWidth: 32, frameHeight: 32 },
         );
+        this.scene.load.spritesheet(
+            "bulletImpact1",
+            "weapons/bulletImpact/b1.png",
+            { frameWidth: 64, frameHeight: 64 },
+        );
+        this.scene.load.spritesheet(
+            "bulletImpact2",
+            "weapons/bulletImpact/b2.png",
+            { frameWidth: 64, frameHeight: 64 },
+        );
 
         this.scene.load.spritesheet(
             "blood_splat",

@@ -85,7 +85,7 @@ export class BulletGenerator {
         rewoundPositions.set(id, { x, y });
       } else {
         // Fallback for players without history
-        const current = entity.hurtBox_rigidBody.translation();
+        const current = entity.rigidBody.translation();
         rewoundPositions.set(id, { x: current.x, y: current.y });
       }
     }

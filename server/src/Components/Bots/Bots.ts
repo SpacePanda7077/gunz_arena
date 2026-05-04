@@ -77,18 +77,23 @@ export class Bot {
   sessionId: string;
   grid: number[][];
   allPossiblePositions: { x: number; y: number }[];
+
+  justTookDamage: boolean;
+  lastTakeDamageTime: number;
+  lastAddHealthTime: number;
   weapon: {
     type: string;
     name: string;
     rpm: number;
     range: number;
     damage: number;
+    magSize: number;
+    reloadTime: number;
     bulletPerShot: number;
     isBurst: boolean;
   };
-  justTookDamage: boolean;
-  lastTakeDamageTime: number;
-  lastAddHealthTime: number;
+  mag: number;
+  isReloading: boolean;
   constructor(
     world: World,
     position: { x: number; y: number },
@@ -119,6 +124,7 @@ export class Bot {
     this.isChasing = false;
     this.isAttacking = false;
     this.justTookDamage = false;
+    this.isReloading = false;
     this.lastTakeDamageTime = 0;
     this.lastAddHealthTime = 0;
     this.speed = 200;
@@ -133,6 +139,7 @@ export class Bot {
     this.allPossiblePositions = allPossiblePosition;
     this.create_body(position, teamid, grid, allPossiblePosition);
     this.weapon = weapon;
+    this.mag = weapon.magSize;
   }
   private create_body(
     position: { x: number; y: number },
@@ -443,6 +450,21 @@ export class Bot {
     }
 
     return false;
+  }
+
+  reload(room: Room) {
+    const reloadTime = this.weapon.reloadTime * 1000;
+    if (this.isReloading) return;
+    this.isReloading = true;
+    room.clock.setTimeout(() => {
+      this.mag = this.weapon.magSize;
+      this.isReloading = false;
+    }, reloadTime);
+  }
+  autoreload(room: Room) {
+    if (this.mag <= 0) {
+      this.reload(room);
+    }
   }
   die(time: number, room: Room) {
     if (this.isDead) return;
