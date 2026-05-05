@@ -1,5 +1,6 @@
 import { Scene } from "phaser";
 import { HealthBar } from "../GameComponent/ui/healthbar";
+import { client } from "../../Zustand/Store";
 
 export class Ui extends Scene {
     UiLayer: Phaser.GameObjects.Layer;
@@ -9,6 +10,7 @@ export class Ui extends Scene {
     reloadUi: Phaser.GameObjects.Sprite;
     weaponInvetory: Phaser.GameObjects.Container;
     healthBar: HealthBar;
+    ping: Phaser.GameObjects.Text;
     constructor() {
         super("Ui");
     }
@@ -26,9 +28,23 @@ export class Ui extends Scene {
     create() {
         this.width = Number(this.game.config.width);
         this.height = Number(this.game.config.height);
+        this.ping = this.add
+            .text(this.width * 0.95, this.height * 0.3, "0")
+            .setOrigin(1, 0.5);
 
         this.addReloadUi();
         this.addweaponInventory();
+        this.time.addEvent({
+            delay: 3000,
+            callback: async () => {
+                const latancy = await client.getLatency({ pingCount: 1 });
+                this.ping.text = `${latancy.toFixed(0)} ms`;
+                if (latancy < 120) this.ping.setColor("#00ff00");
+                else if (latancy < 180) this.ping.setColor("#ffff00");
+                else this.ping.setColor("#ff0000");
+            },
+            loop: true,
+        });
     }
     update(time: number, delta: number): void {}
 

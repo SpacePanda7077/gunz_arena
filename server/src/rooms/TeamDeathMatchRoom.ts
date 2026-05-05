@@ -271,6 +271,7 @@ export class TeamDeathMatchRoom extends Room {
      * Called when the room is disposed.
      */
     console.log("room", this.roomId, "disposing...");
+    this.world.free();
   }
   async InitRapier() {
     await init();
