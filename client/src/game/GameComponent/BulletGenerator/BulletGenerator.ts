@@ -195,8 +195,8 @@ export class BulletGenerator {
                 x: Math.cos(bullet.angle),
                 y: Math.sin(bullet.angle),
             };
-            bullet.body.x += dir.x * 50;
-            bullet.body.y += dir.y * 50;
+            bullet.body.x += dir.x * 100;
+            bullet.body.y += dir.y * 100;
             bullet.graphic.lineTo(bullet.body.x, bullet.body.y);
             bullet.graphic.strokePath();
             const dist = PhaserMath.Distance.Between(

@@ -43,6 +43,8 @@ export class Game extends Scene {
 
     preload() {
         this.load.setPath("assets");
+        this.load.image("health-bar", "ui/healthbar/health-bar.png");
+        this.load.image("health-bar-bg", "ui/healthbar/health-bar-bg.png");
         const loader = new Loader(this);
         loader.LoadDefault();
         loader.LoadBody();

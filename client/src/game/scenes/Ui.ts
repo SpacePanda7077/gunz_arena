@@ -15,11 +15,8 @@ export class Ui extends Scene {
     preload() {
         this.load.setPath("assets");
         this.load.image("selected", "ui/weaponInventory/selected.png");
-        this.load.image("healthbar", "ui/weaponInventory/healthbar.png");
-        this.load.image(
-            "innerHealthbar",
-            "ui/weaponInventory/innerHealthbar.png",
-        );
+        this.load.image("health-bar", "ui/healthbar/health-bar.png");
+        this.load.image("health-bar-bg", "ui/healthbar/health-bar-bg.png");
         this.load.image("throwables", "ui/weaponInventory/throwables.png");
         this.load.spritesheet("reload", "ui/reload.png", {
             frameWidth: 48,

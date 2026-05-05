@@ -19,24 +19,6 @@ export class CollisionChecker {
         const sortedBodies = this.ArrangColliders(body1, body2);
         const b1_userdata = sortedBodies.body1.userData as any;
         const b2_userdata = sortedBodies.body2.userData as any;
-
-        if (b1_userdata.type === "BULLET" && b2_userdata.type === "WALL") {
-          const id = bulletGenerator.detroyBullet(
-            (sortedBodies.body1.userData as any).id,
-            thingsToDestroy,
-          );
-
-          room.broadcast("deleteBullet", id);
-        }
-        if (b1_userdata.type === "PLAYER" && b2_userdata.type === "BULLET") {
-          if (b1_userdata.teamid === b2_userdata.teamid) return;
-          const id = bulletGenerator.detroyBullet(
-            (sortedBodies.body2.userData as any).id,
-            thingsToDestroy,
-          );
-
-          room.broadcast("deleteBullet", id);
-        }
       }
     });
   }

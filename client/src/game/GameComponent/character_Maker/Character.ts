@@ -57,7 +57,13 @@ export class Character {
     }
     create_body(position: { x: number; y: number }) {
         this.shadow = this.scene.add.ellipse(0, 32, 60, 20, 0x000000, 0.3);
-        this.health = new HealthBar(this.scene, position.x, position.y);
+        this.health = new HealthBar(
+            this.scene,
+            position.x - 50,
+            position.y,
+            100,
+            20,
+        );
         const right_leg = this.scene.add.sprite(-8, 23, "right_leg");
         const left_leg = this.scene.add.sprite(8, 23, "left_leg");
         const body = this.scene.add.sprite(0, 0, "body");
@@ -160,7 +166,7 @@ export class Character {
         this.body.setPosition(interpolatedPos.x, interpolatedPos.y);
         this.camTarget.setPosition(position.x, position.y + 32);
 
-        this.health.setPosition(interpolatedPos.x, interpolatedPos.y - 100);
+        this.health.setPosition(interpolatedPos.x - 50, interpolatedPos.y - 40);
     }
     handleAnimations() {
         if (this.physicsBody.isMoving) {

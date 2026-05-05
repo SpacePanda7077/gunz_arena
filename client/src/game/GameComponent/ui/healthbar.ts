@@ -2,18 +2,15 @@ import { Display } from "phaser";
 
 export class HealthBar {
     private scene: Phaser.Scene;
-    private x: number;
-    private y: number;
-    private width: number;
-    private height: number;
-    private radius: number;
-
     private maxHealth: number;
     private currentHealth: number;
 
-    private bg!: Phaser.GameObjects.Graphics;
-    private bar!: Phaser.GameObjects.Graphics;
-    private border!: Phaser.GameObjects.Graphics;
+    private container!: Phaser.GameObjects.Container;
+    private bg!: Phaser.GameObjects.Sprite;
+    private bar!: Phaser.GameObjects.Sprite;
+
+    private barWidth: number; // visual width
+    private textureWidth: number; // original texture width
 
     constructor(
         scene: Phaser.Scene,
@@ -22,101 +19,81 @@ export class HealthBar {
         width = 50,
         height = 8,
         maxHealth = 300,
-        radius = 4,
     ) {
         this.scene = scene;
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-        this.radius = radius;
-
         this.maxHealth = maxHealth;
         this.currentHealth = maxHealth;
+        this.barWidth = width;
 
-        this.bg = this.scene.add.graphics();
-        this.bar = this.scene.add.graphics();
-        this.border = this.scene.add.graphics();
+        this.container = this.scene.add.container(x, y);
 
-        this.draw();
+        // Background
+        this.bg = this.scene.add
+            .sprite(0, 0, "health-bar-bg")
+            .setOrigin(0, 0.5)
+            .setDisplaySize(width, height)
+            .setAlpha(0.7)
+            .setTint(0x222222);
+
+        // Health bar (foreground)
+        this.bar = this.scene.add
+            .sprite(0, 0, "health-bar")
+            .setOrigin(0, 0.5)
+            .setDisplaySize(width, height);
+
+        this.container.add([this.bg, this.bar]);
+
+        // Important: Save the original texture width
+        this.textureWidth = this.bar.width; // or this.bar.frame.width
+
+        this.updateBar();
+    }
+
+    private updateBar() {
+        const percent = Phaser.Math.Clamp(
+            this.currentHealth / this.maxHealth,
+            0,
+            1,
+        );
+
+        // Correct way to crop
+        this.bar.setCrop(0, 0, this.textureWidth * percent, this.bar.height);
+
+        // Color change
+        if (percent < 0.3) this.bar.setTint(0xff0000);
+        else if (percent < 0.6) this.bar.setTint(0xffff00);
+        else this.bar.setTint(0x00ff00);
     }
 
     setHealth(value: number) {
         this.currentHealth = Phaser.Math.Clamp(value, 0, this.maxHealth);
-        this.draw();
+        this.updateBar();
     }
 
     damage(amount: number) {
         this.setHealth(this.currentHealth - amount);
     }
-
     heal(amount: number) {
         this.setHealth(this.currentHealth + amount);
     }
 
-    private draw() {
-        this.bg.clear();
-        this.bar.clear();
-        this.border.clear();
-
-        // Background (dark)
-        this.bg.fillStyle(0x000000, 0.5);
-        this.bg.fillRoundedRect(
-            this.x,
-            this.y,
-            this.width,
-            this.height,
-            this.radius,
-        );
-
-        // Health %
-        const percent = this.currentHealth / this.maxHealth;
-
-        // Dynamic color
-        let color = 0x00ff00;
-        if (percent < 0.6) color = 0xffff00;
-        if (percent < 0.3) color = 0xff0000;
-
-        // Health bar (foreground)
-        this.bar.fillStyle(color, 1);
-        this.bar.fillRoundedRect(
-            this.x,
-            this.y,
-            this.width * percent,
-            this.height,
-            this.radius,
-        );
-
-        // Border
-        this.border.lineStyle(2, 0xffffff, 1);
-        this.border.strokeRoundedRect(
-            this.x,
-            this.y,
-            this.width,
-            this.height,
-            this.radius,
-        );
-    }
-
     setPosition(x: number, y: number) {
-        this.x = x;
-        this.y = y;
-        this.draw();
+        this.container.setPosition(x, y);
     }
+
     setVisible(value: boolean) {
-        this.bg.setVisible(value);
-        this.bar.setVisible(value);
-        this.border.setVisible(value);
+        this.container.setVisible(value);
+    }
+
+    setDepth(depth: number) {
+        this.container.setDepth(depth);
     }
     setMask(mask: Display.Masks.GeometryMask) {
-        this.bg.setMask(mask);
-        (this.bar.setMask(mask), this.border.setMask(mask));
+        this.container.setMask(mask);
     }
 
     destroy() {
-        this.bg.destroy();
-        this.bar.destroy();
-        this.border.destroy();
+        this.container.destroy();
     }
 }
 

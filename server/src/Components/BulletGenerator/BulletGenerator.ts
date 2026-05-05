@@ -255,22 +255,4 @@ export class BulletGenerator {
 
     return { s1, s2, t: Math.max(0, Math.min(1, t)) }; // clamp t
   }
-
-  // ─── Other methods ───────────────────────────────────────────────────────
-  simulateBullets() {
-    // ... your existing code
-  }
-
-  destroyBullet(id: string, thingsToDestroy: RigidBody[]) {
-    const index = this.allBullets.findIndex(
-      (b) => (b.rb.userData as any)?.id === id,
-    );
-
-    if (index !== -1) {
-      thingsToDestroy.push(this.allBullets[index].rb);
-      this.allBullets.splice(index, 1);
-      return id;
-    }
-    return undefined;
-  }
 }

@@ -178,7 +178,6 @@ export class TeamDeathMatchRoom extends Room {
       this.state.snapshots.shift();
     }
     this.world.step(this.eventQueue);
-    this.bulletGenerator.simulateBullets();
     this.collisionChecker.checkCollision(
       this.eventQueue,
       this.world,
