@@ -50,14 +50,9 @@ export const useHandleColyseus = create<RoomType>((set, get) => ({
     },
 
     consumeReservation: async (reservation: SeatReservation) => {
-        try {
-            const room = await client.consumeSeatReservation(reservation);
-            set({ room, isConnecting: false, connectionError: null });
-            console.log("✅ Joined via reservation:", room.roomId);
-        } catch (error: any) {
-            console.error("Reservation failed:", error);
-            set({ connectionError: error.message });
-        }
+        const room = await client.consumeSeatReservation(reservation);
+        set({ room, isConnecting: false, connectionError: null });
+        console.log("✅ Joined via reservation:", room.roomId);
     },
 }));
 

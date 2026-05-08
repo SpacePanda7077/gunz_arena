@@ -8,13 +8,13 @@ export class LobbyRoom extends Room {
   messages = {
     match_make: async (
       client: Client,
-      data: { teamId: string; game_mode: string },
+      data: { teamId: string; game_mode: string; selectedWeapon: string },
     ) => {
       if (this.inGame) {
         return;
       }
       await this.lock();
-      await this.findRoom(data.game_mode, data.teamId);
+      await this.findRoom(data.game_mode, data.teamId, data.selectedWeapon);
       this.inGame = true;
       console.log("MatchMaking", this.roomId);
     },
@@ -53,7 +53,7 @@ export class LobbyRoom extends Room {
     console.log("room LOBBY", this.roomId, "disposing...");
   }
 
-  async findRoom(game_mode: string, teamId: string) {
+  async findRoom(game_mode: string, teamId: string, selectedWeapon: string) {
     const allRooms = await matchMaker.query({ name: "MATCHMAKE" });
     if (allRooms.length >= this.MaxRoomCount) {
       console.log("[Server Full]: Server is full !!!");
@@ -77,6 +77,7 @@ export class LobbyRoom extends Room {
       this.clients.forEach(async (cl) => {
         const reservation = await matchMaker.reserveSeatFor(available_room, {
           teamId,
+          selectedWeapon,
         });
         cl.send("consume_reservation", { reservation, teamId });
       });
@@ -85,7 +86,10 @@ export class LobbyRoom extends Room {
         game_mode,
       });
       this.clients.forEach(async (cl) => {
-        const reservation = await matchMaker.reserveSeatFor(room, { teamId });
+        const reservation = await matchMaker.reserveSeatFor(room, {
+          teamId,
+          selectedWeapon,
+        });
         console.log(reservation);
         cl.send("consume_reservation", { reservation, teamId });
       });

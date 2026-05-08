@@ -37,8 +37,13 @@ export class Physics_Body {
     bulletRay: Ray;
     h_collider: Collider;
     isReloading: boolean;
+    teamid: string;
 
-    constructor(world: World, position: { x: number; y: number }) {
+    constructor(
+        world: World,
+        position: { x: number; y: number },
+        teamid: string,
+    ) {
         this.direction = { x: 0, y: 0 };
         this.velocity = { x: 0, y: 0 };
         this.JUMP_HEIGHT = 32;
@@ -55,14 +60,13 @@ export class Physics_Body {
         this.speed = 300;
         this.MaxSpeed = this.speed;
         this.world = world;
+        this.teamid = teamid;
         this.create_body(position);
     }
     private create_body(position: { x: number; y: number }) {
-        const hurtBox_rigid_body_desc =
-            RigidBodyDesc.kinematicPositionBased().setTranslation(
-                position.x,
-                position.y,
-            );
+        const hurtBox_rigid_body_desc = RigidBodyDesc.kinematicPositionBased()
+            .setTranslation(position.x, position.y)
+            .setUserData({ type: "PLAYER", teamid: this.teamid });
 
         this.rigidBody = this.world.createRigidBody(hurtBox_rigid_body_desc);
 
@@ -122,7 +126,7 @@ export class Physics_Body {
             if (this.speed <= 200) {
                 this.isSliding = false;
             }
-        } else if (this.isShooting || this.isReloading) {
+        } else if (this.isShooting) {
             this.speed = 150;
         } else {
             this.speed = this.MaxSpeed;

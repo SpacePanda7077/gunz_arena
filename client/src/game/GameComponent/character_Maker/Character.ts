@@ -39,21 +39,23 @@ export class Character {
         | Phaser.Sound.NoAudioSound
         | Phaser.Sound.HTML5AudioSound
         | Phaser.Sound.WebAudioSound;
+    teamIndex: number;
 
     constructor(
         scene: Phaser.Scene,
         world: World,
         position: { x: number; y: number },
         teamid: string,
+        teamIndex: number,
         weapon: (typeof weapons)[0],
     ) {
         this.scene = scene;
         this.world = world;
         this.weaponInfo = weapon;
         this.mag = this.weaponInfo.magSize;
-
-        this.create_body(position);
+        this.teamIndex = teamIndex;
         this.teamid = teamid;
+        this.create_body(position);
     }
     create_body(position: { x: number; y: number }) {
         this.shadow = this.scene.add.ellipse(0, 32, 60, 20, 0x000000, 0.3);
@@ -109,7 +111,7 @@ export class Character {
             .rectangle(position.x, position.y + 32, 32, 32, 0xff0000)
             .setVisible(false);
 
-        this.physicsBody = new Physics_Body(this.world, position);
+        this.physicsBody = new Physics_Body(this.world, position, this.teamid);
     }
 
     loadWeapon() {
@@ -127,10 +129,6 @@ export class Character {
                 this.scene.load.image(
                     this.weaponInfo.name,
                     `weapons/weapons/${this.weaponInfo.name}/${this.weaponInfo.name}.png`,
-                );
-                this.scene.load.audio(
-                    this.weaponInfo.name,
-                    `weapons/weapons/${this.weaponInfo.name}/${this.weaponInfo.name}.wav`,
                 );
 
                 this.scene.load.once(
@@ -154,6 +152,23 @@ export class Character {
         } else if (this.scene.textures?.exists(this.weaponInfo.name)) {
             this.weapon.setTexture(this.weaponInfo.name);
             this.weapon.setVisible(true);
+        }
+        if (!this.scene.sound.get(this.weaponInfo.name)) {
+            console.log("sound doesnt exist");
+            this.scene.load.audio(
+                this.weaponInfo.name,
+                `weapons/weapons/${this.weaponInfo.name}/${this.weaponInfo.name}.wav`,
+            );
+            this.scene.load.once(
+                `filecomplete-audio-${this.weaponInfo.name}`,
+                () => {
+                    console.log("sound loaded");
+                    this.gunsound = this.scene.sound.add(this.weaponInfo.name);
+                },
+            );
+            this.scene.load.start();
+        } else {
+            console.log("Sound already exist");
         }
     }
     updateVisual(alpha: number) {
@@ -246,7 +261,9 @@ export class Character {
             this.physicsBody.bulletRay,
             angle,
         );
-        this.gunsound.play();
+        this.gunsound.play({
+            volume: PhaserMath.FloatBetween(0.4, 0.7),
+        });
         this.mag--;
         this.lastShootTime = time;
         this.hand.x =

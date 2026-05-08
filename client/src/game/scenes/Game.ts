@@ -12,6 +12,7 @@ import { BulletGenerator } from "../GameComponent/BulletGenerator/BulletGenerato
 
 import { Loader } from "../Helper/Loader/Loader";
 import { getWeapons } from "../GameComponent/Weapons/Weapons";
+import { Ui } from "./Ui";
 
 export class Game extends Scene {
     world: World;
@@ -53,7 +54,7 @@ export class Game extends Scene {
     create() {
         this.input.mouse?.disableContextMenu();
         this.initialize_world();
-        this.scene.launch("Ui");
+        this.scene.launch("Ui", { primary: "sg550", secondary: "mac10" });
         this.lastPos = {
             x: 0,
             y: 0,
@@ -115,7 +116,6 @@ export class Game extends Scene {
         const callbacks = Callbacks.get(this.room);
 
         callbacks.onAdd("players", (player, sessionId) => {
-            console.log("Player joined:", player);
             const id = sessionId as string;
             const backendPlayer = player as backendPlayer;
             const weapon = weapons.find(
@@ -130,6 +130,7 @@ export class Game extends Scene {
                     y: backendPlayer.y,
                 },
                 backendPlayer.teamid,
+                backendPlayer.teamIndex,
                 weapon,
             );
             this.frontendPlayers[id].body.setMask(darkmask);
@@ -154,6 +155,7 @@ export class Game extends Scene {
                     0.2,
                 );
                 this.inputHandler = new Input_Handler(this);
+                const ui = this.scene.get("Ui") as Ui;
             }
 
             callbacks.onChange(player as any, () => {
@@ -161,7 +163,8 @@ export class Game extends Scene {
 
                 if (id === this.room.sessionId) {
                     const f_player = this.frontendPlayers[id];
-                    const ui: any = this.scene.get("Ui");
+                    f_player.body.setDepth(f_player.body.y + 64);
+                    const ui = this.scene.get("Ui") as Ui;
                     if (ui) {
                         ui.healthBar.setHealth(
                             PhaserMath.Clamp(backendPlayer.health, 0, 300),
@@ -220,6 +223,7 @@ export class Game extends Scene {
                     }
                 } else {
                     const f_player = this.frontendPlayers[id];
+                    f_player.body.setDepth(f_player.body.y + 64);
                     if (
                         f_player.teamid ===
                         this.frontendPlayers[this.room.sessionId].teamid
@@ -263,6 +267,23 @@ export class Game extends Scene {
                 }
             });
         });
+
+        callbacks.onChange(this.room.state, () => {
+            const uiscene = this.scene.get("Ui") as Ui;
+            console.log("Current Team A Score:", this.room.state.teamAScore);
+            console.log("Current Team B Score:", this.room.state.teamBScore);
+            if (
+                this.frontendPlayers[this.room.sessionId] &&
+                this.frontendPlayers[this.room.sessionId].teamIndex === 0
+            ) {
+                console.log(this.room.state.teamAScore.toString());
+                uiscene.ourText.text = this.room.state.teamBScore.toString();
+                uiscene.theirText.text = this.room.state.teamAScore.toString();
+            } else {
+                uiscene.ourText.text = this.room.state.teamAScore.toString();
+                uiscene.theirText.text = this.room.state.teamBScore.toString();
+            }
+        });
         callbacks.onRemove("players", (player, sessionId) => {
             console.log("Player left:", player);
         });
@@ -281,8 +302,18 @@ export class Game extends Scene {
                     data.angle,
                     data.toi,
                 );
-
-                this.frontendPlayers[data.shooterId].gunsound.play();
+                const player = this.frontendPlayers[this.room.sessionId];
+                const shootingPlayer = this.frontendPlayers[data.shooterId];
+                if (player && shootingPlayer) {
+                    const dx = player.body.x - shootingPlayer.body.x;
+                    const dy = player.body.y - shootingPlayer.body.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const maxDist = 600;
+                    if (dist > maxDist) return;
+                    const volume = 1 - dist / maxDist;
+                    const pan = PhaserMath.Clamp(dx / maxDist, -1, 1);
+                    shootingPlayer.gunsound.play({ volume, pan });
+                }
             },
         );
         this.room.onMessage("deleteBullet", (id: string) => {
@@ -358,12 +389,49 @@ export class Game extends Scene {
         this.thingsToDestroy.length = 0;
     }
     updateTarget() {
-        this.aimTarget.x =
-            this.cameras.main.worldView.x +
-            this.mouse.x / this.cameras.main.zoom;
-        this.aimTarget.y =
-            this.cameras.main.worldView.y +
-            this.mouse.y / this.cameras.main.zoom;
+        if (this.sys.game.device.os.desktop) {
+            this.aimTarget.x =
+                this.cameras.main.worldView.x +
+                this.mouse.x / this.cameras.main.zoom;
+            this.aimTarget.y =
+                this.cameras.main.worldView.y +
+                this.mouse.y / this.cameras.main.zoom;
+        } else {
+            const uiscene = this.scene.get("Ui") as Ui;
+            if (
+                uiscene &&
+                uiscene.shootJoyStick &&
+                this.frontendPlayers[this.room.sessionId]
+            ) {
+                const moveJoystick = uiscene.shootJoyStick;
+                const angle = moveJoystick.rotation;
+                const dir = {
+                    x: Math.cos(angle),
+                    y: Math.sin(angle),
+                };
+                if (moveJoystick.force > 0) {
+                    const player = this.frontendPlayers[this.room.sessionId];
+                    this.aimTarget.x =
+                        player.body.x +
+                        Math.cos(angle) * (Number(this.game.config.width) / 2);
+                    this.aimTarget.y =
+                        player.body.y +
+                        Math.sin(angle) * (Number(this.game.config.width) / 2);
+                } else {
+                    const player = this.frontendPlayers[this.room.sessionId];
+                    const ang = Math.atan2(
+                        player.physicsBody.direction.y,
+                        player.physicsBody.direction.x,
+                    );
+                    this.aimTarget.x =
+                        player.body.x +
+                        Math.cos(ang) * (Number(this.game.config.width) / 2);
+                    this.aimTarget.y =
+                        player.body.y +
+                        Math.sin(ang) * (Number(this.game.config.width) / 2);
+                }
+            }
+        }
     }
 
     initialize_world() {
@@ -447,14 +515,14 @@ export class Game extends Scene {
         const targetY = (player.body.y + this.aimTarget.y) * 0.5;
 
         // 2. Add some "aim bias" - pull camera more towards where you're aiming
-        const aimBias = 1; // 0.5 = pure midpoint, 0.7+ = more towards aim
+        const aimBias = 2; // 0.5 = pure midpoint, 0.7+ = more towards aim
         const biasedX =
             player.body.x * (1 - aimBias) + this.aimTarget.x * aimBias;
         const biasedY =
             player.body.y * (1 - aimBias) + this.aimTarget.y * aimBias;
 
         // 3. Smooth follow using lerp (feels much better than instant centerOn)
-        const lerpFactor = 0.1; // lower = smoother/slower, higher = snappier
+        const lerpFactor = 0.01; // lower = smoother/slower, higher = snappier
 
         const newScrollX = Phaser.Math.Linear(
             cam.scrollX,

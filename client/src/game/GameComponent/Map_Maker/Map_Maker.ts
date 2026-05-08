@@ -20,6 +20,7 @@ export class Map_Maker {
         this.world = world;
         this.raycaster = raycaster;
         this.createVisuals(mapName);
+        this.addProps();
     }
 
     createVisuals(mapName: string) {
@@ -28,10 +29,13 @@ export class Map_Maker {
             "walls",
         ) as Phaser.Tilemaps.Tileset;
 
+        const tileset2 = this.map.addTilesetImage(
+            "objects",
+        ) as Phaser.Tilemaps.Tileset;
+
         this.map.createLayer("ground", tileset)?.setDepth(-5000);
         this.map.createLayer("front_wall", tileset)?.setDepth(-100);
         this.map.createLayer("back_wall", tileset)?.setDepth(100);
-
         this.add_collision();
     }
 
@@ -62,6 +66,16 @@ export class Map_Maker {
         });
 
         // Add map boundaries as a polygon so light doesn't leak out of the world
+    }
+    addProps() {
+        const propLayer = this.map.objects.find((obj) => obj.name === "prop");
+        console.log(propLayer);
+        propLayer?.objects.forEach((object) => {
+            const sprite = this.scene.add
+                .sprite(object.x!, object.y!, "objects", Number(object.type))
+                .setOrigin(0.5, 1)
+                .setDepth(object.y!);
+        });
     }
 }
 

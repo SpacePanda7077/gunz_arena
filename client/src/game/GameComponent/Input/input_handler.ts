@@ -3,6 +3,7 @@ import { Character } from "../character_Maker/Character";
 import { Scene, Input } from "phaser";
 import uniqid from "uniqid";
 import { BulletGenerator } from "../BulletGenerator/BulletGenerator";
+import { Ui } from "../../scenes/Ui";
 
 export class Input_Handler {
     scene: Scene;
@@ -23,6 +24,7 @@ export class Input_Handler {
     }[];
     inputIndex: number;
     slide: Input.Keyboard.Key;
+    switchWeapon: Input.Keyboard.Key | undefined;
 
     constructor(scene: Phaser.Scene) {
         this.scene = scene;
@@ -40,6 +42,9 @@ export class Input_Handler {
         this.slide = this.scene.input.keyboard!.addKey(
             Input.Keyboard.KeyCodes.SPACE,
         );
+        this.switchWeapon = this.scene.input.keyboard?.addKey(
+            Phaser.Input.Keyboard.KeyCodes.ONE,
+        );
     }
 
     // 🚨 CALL THIS FROM fixedUpdate (NOT Phaser update)
@@ -52,6 +57,38 @@ export class Input_Handler {
         bulletGenerator: BulletGenerator,
     ) {
         const input = { x: 0, y: 0 };
+        const uiscene = this.scene.scene.get("Ui") as Ui;
+        if (uiscene && uiscene.moveJoyStick) {
+            console.log(uiscene.moveJoyStick.rotation);
+            const moveJoystick = uiscene.moveJoyStick;
+            const angle = moveJoystick.rotation;
+            const dir = {
+                x: Math.cos(angle),
+                y: Math.sin(angle),
+            };
+            if (moveJoystick.force > 0) {
+                input.x = dir.x;
+                input.y = dir.y;
+            }
+        }
+        let isShooting = false;
+        let isSliding = false;
+        let reload = false;
+        if (uiscene && uiscene.shootJoyStick) {
+            const moveJoystick = uiscene.shootJoyStick;
+            const angle = moveJoystick.rotation;
+            const dir = {
+                x: Math.cos(angle),
+                y: Math.sin(angle),
+            };
+            if (moveJoystick.force > 0) {
+                isShooting = true;
+                aimPos.x = player.body.x + Math.cos(angle) * 200;
+                aimPos.y = player.body.y + Math.sin(angle) * 200;
+            }
+            isSliding = uiscene.slidePressed;
+            reload = uiscene.reloadPressed;
+        }
 
         // Combine inputs into ONE vector
         if (this.left.isDown) input.x -= 1;
@@ -65,7 +102,7 @@ export class Input_Handler {
             player.physicsBody.isMoving = false;
         }
         if (input.x !== 0) {
-            player.flipped = input.x;
+            player.flipped = Math.sign(input.x);
         }
 
         // Normalize (important for diagonals)
@@ -84,13 +121,19 @@ export class Input_Handler {
             computedMovement,
             slide:
                 player.physicsBody.isMoving &&
-                Input.Keyboard.JustDown(this.slide),
+                this.scene.sys.game.device.os.desktop
+                    ? Input.Keyboard.JustDown(this.slide)
+                    : isSliding,
 
             shoot: {
-                shoot: this.scene.input.activePointer.leftButtonDown(),
+                shoot: this.scene.sys.game.device.os.desktop
+                    ? this.scene.input.activePointer.leftButtonDown()
+                    : isShooting,
                 timestamp: Date.now(),
             },
-            reload: this.scene.input.activePointer.rightButtonDown(),
+            reload: this.scene.sys.game.device.os.desktop
+                ? this.scene.input.activePointer.rightButtonDown()
+                : reload,
 
             speed: player.physicsBody.speed,
             inputIndex: this.inputIndex,
@@ -117,6 +160,9 @@ export class Input_Handler {
         } else {
             player.physicsBody.isShooting = false;
         }
+        if (Phaser.Input.Keyboard.JustDown(this.switchWeapon!)) {
+            this.SwitchWeapon();
+        }
     }
     Shoot(
         player: Character,
@@ -130,6 +176,13 @@ export class Input_Handler {
                 player.shoot(time, bulletGenerator, aimTarget);
             }
         }
+    }
+    SwitchWeapon() {
+        const uiscene = this.scene.scene.get("Ui") as Ui;
+        let i: number = uiscene.currentSlot;
+        const nextSlot = (i + 1) % 3;
+        uiscene.switchWeapon(nextSlot);
+        uiscene.currentSlot = nextSlot;
     }
 }
 

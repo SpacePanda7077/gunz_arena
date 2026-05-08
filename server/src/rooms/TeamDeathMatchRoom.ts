@@ -83,12 +83,14 @@ export class TeamDeathMatchRoom extends Room {
      */
 
     this.setSimulationInterval((delta: number) => {
+      if (this.matchController.GameOver) return;
       this.elapsedTime += delta;
 
       while (this.elapsedTime >= this.fixedTick) {
         this.elapsedTime -= this.fixedTick;
         this.fixedUpdate();
       }
+      this.checkIfGameIsOver();
     }, 1000 / 30);
   }
 
@@ -156,6 +158,15 @@ export class TeamDeathMatchRoom extends Room {
       player.handleAnimations();
       if (player.health <= 0) {
         player.die(this.pastTime, this);
+        const teamId = player.teamid;
+        const index = this.matchController.match.teamIds.indexOf(teamId);
+        if (index === -1) return;
+        if (index === 0) {
+          this.state.teamAScore += 1;
+        }
+        if (index === 1) {
+          this.state.teamBScore += 1;
+        }
       }
 
       const position = player.rigidBody.translation();
@@ -230,10 +241,14 @@ export class TeamDeathMatchRoom extends Room {
     console.log(client.sessionId, "joined!");
     const id = client.sessionId;
     const teamData = options.teamData;
+    const selectedWeapon = options.selectedWeapon;
+    console.log("Selected Weapon : ", selectedWeapon);
+
     const index = this.getMyTeam(teamData.id);
     const teamid = this.matchController.match.teamIds[index];
     const player = new Player();
     const position = this.map.positions.teamDeathMatchPosition[index];
+    console.log("positions : ", position);
     const mainPosition = {
       x: Between(position.x - 200, position.x + 200),
       y: Between(position.y - 200, position.y + 200),
@@ -243,7 +258,8 @@ export class TeamDeathMatchRoom extends Room {
     player.y = mainPosition.y;
     player.sessionId = id;
     player.teamid = teamid;
-    const weapon = this.weapons[5];
+    player.teamIndex = index;
+    const weapon = this.weapons.find((w) => w.name === selectedWeapon);
     player.weaponName = weapon.name;
     this.players[id] = new Character(
       this.world,
@@ -293,6 +309,13 @@ export class TeamDeathMatchRoom extends Room {
     const teamIndex = teams.findIndex((t) => t.find((p) => p.sessionId === id));
     return teamIndex;
   }
+  checkIfGameIsOver() {
+    const teamAScore = this.state.teamAScore;
+    const teamBScore = this.state.teamBScore;
+    if (teamAScore === 50 || teamBScore === 50) {
+      this.matchController.GameOver = true;
+    }
+  }
   addBots() {
     const id = uniqid();
     const teams = this.metadata.teams as {
@@ -314,6 +337,7 @@ export class TeamDeathMatchRoom extends Room {
     player.y = mainPosition.y;
     player.sessionId = id;
     player.teamid = teamid;
+    player.teamIndex = index;
     const weapon = this.weapons[Math.floor(Math.random() * 4)];
     player.weaponName = weapon.name;
     this.players[id] = new Bot(

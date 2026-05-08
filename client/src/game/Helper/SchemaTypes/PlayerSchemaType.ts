@@ -6,6 +6,7 @@ export type backendPlayer = {
     health: number;
     currentInputIndex: number;
     teamid: string;
+    teamIndex: number;
     weaponName: string;
     animation: string;
     flipped: number;

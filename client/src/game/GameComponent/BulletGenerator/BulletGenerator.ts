@@ -14,10 +14,23 @@ export class BulletGenerator {
     }[] = [];
     scene: Phaser.Scene;
     bulletBody: Phaser.GameObjects.Rectangle;
+    gunSounds: (
+        | Phaser.Sound.NoAudioSound
+        | Phaser.Sound.HTML5AudioSound
+        | Phaser.Sound.WebAudioSound
+    )[];
 
     constructor(scene: Phaser.Scene, world: World) {
         this.scene = scene;
         this.world = world;
+        this.gunSounds = [];
+        this.addGunsounds();
+    }
+    addGunsounds() {
+        for (let i = 1; i < 4; i++) {
+            const sound = this.scene.sound.add(`bulletImpact${i}`);
+            this.gunSounds.push(sound);
+        }
     }
     createBullet(
         player: Character,
@@ -87,9 +100,34 @@ export class BulletGenerator {
                 repeat: 0,
             });
             effect.play("hit");
+
             effect.once("animationcomplete", () => {
                 effect.destroy();
             });
+            const userdata = hit.collider.parent()?.userData as any;
+            if (userdata && userdata.teamid !== player.teamid) {
+                const damageNumber = this.scene.add.text(
+                    PhaserMath.Between(hitPos.x - 40, hitPos.x + 40),
+                    hitPos.y,
+                    player.weaponInfo.damage.toString(),
+                    { fontSize: 22, color: "red", fontStyle: "Bold" },
+                );
+                const randomSound =
+                    this.gunSounds[
+                        Math.floor(Math.random() * this.gunSounds.length)
+                    ];
+                randomSound.play();
+                const dt = this.scene.tweens.add({
+                    targets: damageNumber,
+                    y: hitPos.y - 100,
+                    alpha: 0,
+                    duration: 350,
+                    onComplete: () => {
+                        damageNumber.destroy();
+                        dt.destroy();
+                    },
+                });
+            }
         }
 
         const graphics = this.scene.add.graphics();

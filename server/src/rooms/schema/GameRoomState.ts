@@ -23,6 +23,7 @@ export class Player extends Schema {
   @type("number") aimAngle: number = 0;
   @type("number") currentInputIndex: number = 0;
   @type("number") flipped: number = 1;
+  @type("number") teamIndex: number = 0;
   @type("string") teamid: string = "";
   @type("string") weaponName: string = "";
   @type("string") sessionId: string = "";
@@ -37,4 +38,6 @@ export class GameState extends Schema {
     positions: Map<string, { x: number; y: number }>;
   }[] = [];
   @type({ map: Player }) players = new MapSchema<Player>();
+  @type("number") teamAScore: number = 0;
+  @type("number") teamBScore: number = 0;
 }

@@ -13,6 +13,11 @@ export class Loader {
         );
         this.scene.load.image("walls", "maps/pngs/killzone/walls.png");
         this.scene.load.spritesheet(
+            "objects",
+            "maps/pngs/killzone/objects.png",
+            { frameWidth: 128, frameHeight: 128 },
+        );
+        this.scene.load.spritesheet(
             "assault_flash",
             "weapons/muzzle_flash/assault/assault.png",
             { frameWidth: 32, frameHeight: 32 },
@@ -37,6 +42,7 @@ export class Loader {
             frameWidth: 256,
             frameHeight: 256,
         });
+        this.loadBulletImpactSounds();
     }
 
     LoadBody(imageLink?: string) {
@@ -46,6 +52,14 @@ export class Loader {
                 imageLink ? `${imageLink}/${part}.png` : `body/${part}.png`,
             );
         });
+    }
+    loadBulletImpactSounds() {
+        for (let i = 1; i < 4; i++) {
+            this.scene.load.audio(
+                `bulletImpact${i}`,
+                `weapons/bulletImpact/sounds/bulletImpact${i}.mp3`,
+            );
+        }
     }
 }
 

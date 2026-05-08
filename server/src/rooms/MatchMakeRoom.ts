@@ -6,7 +6,9 @@ export class MatchMakeRoom extends Room {
   maxClients = 6;
   state = new GameState();
   clientJoinTime = 5;
-  myteam: { [key: string]: { id: string; teamId: string } } = {};
+  myteam: {
+    [key: string]: { id: string; teamId: string; selectedWeapon: string };
+  } = {};
 
   messages = {
     leave_room: (client: Client) => {
@@ -43,6 +45,7 @@ export class MatchMakeRoom extends Room {
   onCreate(options: any) {
     this.isLocked = false;
     this.sortedTeams = [];
+    this.seatReservationTimeout = 30;
     this.setMetadata({
       game_mode: options.game_mode,
       teamIds: [],
@@ -72,7 +75,8 @@ export class MatchMakeRoom extends Room {
      */
     const id = client.sessionId;
     const teamId = options.teamId;
-    this.myteam[id] = { id: id, teamId };
+    const selectedWeapon = options.selectedWeapon;
+    this.myteam[id] = { id: id, teamId, selectedWeapon };
     const teams = this.metadata.teamIds as {
       sessionId: string;
       teamId: string;
@@ -115,6 +119,7 @@ export class MatchMakeRoom extends Room {
       this.clients.forEach(async (cl) => {
         const reservation = await matchMaker.reserveSeatFor(room, {
           teamData: this.myteam[cl.sessionId],
+          selectedWeapon: this.myteam[cl.sessionId].selectedWeapon,
         });
         cl.send("consume_reservation", reservation);
       });

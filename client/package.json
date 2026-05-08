@@ -33,6 +33,7 @@
         "@tailwindcss/vite": "^4.2.2",
         "phaser": "^3.90.0",
         "phaser-raycaster": "^0.10.11",
+        "phaser4-rex-plugins": "^4.0.6",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "tailwindcss": "^4.2.2",
@@ -55,4 +56,3 @@
         "vite": "^6.3.1"
     }
 }
-

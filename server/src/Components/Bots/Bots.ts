@@ -427,7 +427,7 @@ export class Bot {
 
     // Only shoot if we have clear line of sight
     if (isInRange && isAimedWell && this.canSee) {
-      const spread = 0.5;
+      const spread = 0.8;
       const variation = (Math.random() * 2 - 1) * spread;
       this.angle += variation;
 

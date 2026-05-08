@@ -160,7 +160,7 @@ export class Character {
       if (this.speed <= 200) {
         this.isSliding = false;
       }
-    } else if (this.isShooting || this.isReloading) {
+    } else if (this.isShooting) {
       this.speed = 150;
     } else {
       this.speed = this.MaxSpeed;

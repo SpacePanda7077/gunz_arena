@@ -20,6 +20,7 @@ const config: Types.Core.GameConfig = {
     parent: "game-container",
     backgroundColor: "#26567c",
     scene: [Menu, MainGame, Ui],
+    pixelArt: true,
     plugins: {
         scene: [
             {
