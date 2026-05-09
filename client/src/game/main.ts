@@ -7,7 +7,10 @@ import PhaserRaycaster from "phaser-raycaster";
 
 // Find out more information about the Game Config at:
 // https://docs.phaser.io/api-documentation/typedef/types-core#gameconfig
-await init();
+async function initRapier() {
+    await init();
+}
+
 const config: Types.Core.GameConfig = {
     type: AUTO,
 
@@ -35,5 +38,6 @@ const config: Types.Core.GameConfig = {
 const StartGame = (parent: string) => {
     return new Game({ ...config, parent });
 };
+initRapier();
 
 export default StartGame;
